@@ -1,0 +1,5 @@
+Arduino driver for the Microchip MCP4901 8-bit / MCP4911 10-bit / MCP4921 12-bit
+digital-to-analog converters.
+
+The code is well commented, and information about pins and settings are all
+in there.
