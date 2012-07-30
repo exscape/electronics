@@ -27,7 +27,7 @@ class DAC_MCP49x1 {
 
   private:
     int ss_pin;
-	int LDAC_pin;
+    int LDAC_pin;
     int bitwidth;
     boolean bufferVref;
     boolean gain2x; /* false -> 1x, true -> 2x */

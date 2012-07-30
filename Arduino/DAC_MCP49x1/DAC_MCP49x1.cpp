@@ -9,10 +9,10 @@
  * code modifications, etc.
 
  Pins used: 
- * Arduino pin 7 (Uno) or 38 (Mega) to device LDAC (pin 5) -- optional
- * Arduino pin 10 (SS) to device CS (pin 2) -- doesn't have to be pin 10
  * Arduino pin 11 (for Uno; for Mega: 51) to device SDI (pin 4) - fixed pin
  * Arduino pin 13 (for Uno; for Mega: 52) to device SCK (pin 3) - fixed pin
+ * Any digital pin to device LDAC (DAC pin 5)  (except with PortWrite, see README)
+ * Any digital pin to device CS   (DAC pin 2)  (as above)
  *
  * Other DAC wirings:  
  * Pin 1: VDD, to +5 V
