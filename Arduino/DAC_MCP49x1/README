@@ -1,0 +1,83 @@
+Arduino library for the Microchip MCP49x1 series DACs
+Thomas Backman, 2012
+
+Supported models:
+* MCP4901 (8-bit)
+* MCP4911 (10-bit)
+* MCP4921 (12-bit)
+
+Example usage:
+
+/////////////////////////////////
+
+#include <SPI.h>         // Please don't miss this line
+#include <DAC_MCP49x1.h>
+
+DAC_MCP49x1 dac(DAC_MCP49x1::MCP4901, 10, 7); // DAC Model, SS pin, LDAC pin
+
+void setup() {} // No setup code is necessary
+
+void loop() {
+    dac.output(255);
+    dac.latch(); // this call is only necessary if the LDAC pin isn't tied to ground
+    delay(1000);
+    
+    dac.output(0);
+    dac.latch(); // same as above
+    delay(1000);
+}
+
+/////////////////////////////////
+
+Simple function overview:
+
+Constructor (DAC_MCP49x1)
+	Takes three arguments: the DAC model (MCP4901, MCP4911 or MCP4921), the chip select pin, and the LDAC pin.
+	If the LDAC functionality isn't wanted (if you don't know, you likely don't want it), pass -1 as the LDAC pin.
+
+setBuffer(bool)
+	Should the DAC buffer the reference voltage?
+	Note: if "true", VREF cannot be VDD (e.g. +5 V). Defaults to false.
+
+setGain(int)
+	Sets the gain. The output voltage is x/2^n * VREF * gain, where x = the value passed to out and n = the number of bits
+	For example, for a 8-bit DAC with gain 2x and VREF = 5 V where out(100) is called, vout = 100/256 * 5 * 2 = 3.90625 V.
+	Only 1 and 2 are valid values!
+
+setSPIDivider(int)
+	Sets the SPI clock frequency. See the Arduino docs: http://arduino.cc/en/Reference/SPISetClockDivider
+	Uses the same constants (SPI_CLOCK_DIV2 etc.) as in the Arduino docs.
+
+shutdown(void)
+	Shuts the DAC down to save power. It uses ~3.5 µA in standby, ~150 µA powered up.
+	Settling time after calling set() increases from ~5 to ~10 µs when in standby.
+
+output(unsigned short)
+	Sends the value to the DAC. If the LDAC pin is tied to ground, Vout will change "instantly".
+	If the LDAC pin is connected to the Arduino, nothing will change until latch() is called.
+
+latch(void)
+	Changes the output voltage based on the last value sent using output().
+	Creates a low pulse on the DACs LDAC pin (pin 5 on the DAC chip).
+
+setPortWrite(bool)
+	Note: PortWrite is not supported on the Arduino Leonardo, but should work on the Uno and Mega.
+	*** The CS and LDAC pins set in the constructor are IGNORED when this is set to true!!! ***
+
+	PortWrite is a method that speeds up the code significantly, but only works on fixed pins (see below).
+	It's roughly 30 times faster than digitalWrite in my measurements for this code.
+	(That doesn't mean that the entire code is 30 times faster, but changing a pin value is.)
+
+	In order to use the faster method e.g. on the Arduino Uno, you must use pin 7 on the Uno for the LDAC pin, 
+	and pin 10 for the CS pin. Anything else won't work. If these pins are busy doing something else, you can't use this speed-up.
+
+	Use these pins:
+
+	For the LDAC pin: PD7 (Uno: digital pin 7, Mega: digital pin 38)
+	For the CS pin: PB2 (Uno: digital pin 10, Mega: digital pin 51)
+
+	Also note that since these are fixed, and CS cannot be shared between devices, *you can't use multiple DACs with PortWrite enabled*!
+
+	So, in short...
+	Pro: much faster
+	Con: only works on fixed pins, only works with 1 DAC, doesn't work on all Arduinos
