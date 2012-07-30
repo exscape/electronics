@@ -114,22 +114,6 @@ void DAC_MCP49x1::shutdown(void) {
 	digitalWrite(ss_pin, HIGH);
 }
 
-// Buffer VREF? See datasheet. 1 or 0.
-// Note that with BUF = 1, VREF cannot be VDD.
-//#define BUF 0
-
-// Use 1 for faster output switching; however, on Arduinos that don't use Atmega 168/328,
-// this might not work. Disabled by default for that reason.
-// You'd have to change the port value in the code to use the correct pin.
-// This uses pin 10 (PORTB pin 2) on an Atmega 168/328 based Arduino.
-// This *IGNORES* the SS_PIN definition above!
-//#define PORT_WRITE 0
-
-// Sets the SPI clock frequency, main clock divided by 2, 4, 8, 16, 32, 64 or 128
-// (that's 8 MHz down to 125 kHz on 16 MHz Arduinos)
-// Try DIV4, DIV8 etc. if DIV2 doesn't work. DIV2 = 8 MHz works for me (on a breadboard), though.
-//#define SPI_DIVIDER SPI_CLOCK_DIV8
-
 // Send a new value for the DAC to output.
 // Note that the output is only actually changed when latch() is called,
 // if that functionality is used. If it's not, that pin (LDAC) can be
