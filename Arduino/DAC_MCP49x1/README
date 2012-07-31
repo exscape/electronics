@@ -38,7 +38,7 @@ Constructor (DAC_MCP49x1)
 	Takes three arguments: the DAC model (MCP4901, MCP4911 or MCP4921), the chip
 	select pin, and the LDAC pin.
 	If the LDAC functionality isn't wanted (if you don't know, you likely don't
-	want it), pass -1 as the LDAC pin.
+	want it), pass -1 as the LDAC pin and make sure that pin is tied to ground.
 
 setBuffer(bool)
 	Should the DAC buffer the reference voltage?
@@ -70,7 +70,7 @@ latch(void)
 
 setPortWrite(bool)
 	Note: PortWrite is not supported on the Arduino Leonardo, but should work on
-	the Uno and Mega.
+	the Uno and Mega. (One could change this by changing the ports used in the code.)
 	*** The CS and LDAC pins set in the constructor are IGNORED when this is set to true!!! ***
 
 	PortWrite is a method that speeds up the code significantly, but only works on fixed pins (see below).
@@ -88,5 +88,6 @@ setPortWrite(bool)
 	Also note that since these are fixed, and CS cannot be shared between devices, *you can't use multiple DACs with PortWrite enabled*!
 
 	So, in short...
-	Pro: much faster
-	Con: only works on fixed pins, only works with 1 DAC, doesn't work on all Arduinos
+	Pro: much faster (only matters for relatively high-frequency stuff;
+	the difference is on the order of a few microseconds)
+	Cons: only works on fixed pins, only works with 1 DAC, doesn't work on all Arduinos
