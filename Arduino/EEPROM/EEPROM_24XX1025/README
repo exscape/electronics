@@ -9,9 +9,9 @@ http://dsscircuits.com/articles/arduino-i2c-master-library.html
 Changes were made to support 16-bit addresses and acknowledge polling.
 The unmodified version WILL NOT WORK with this code!
 
-License: MIT/BSD. Basically, do whatever you want, but credit me. Don't say you wrote this.
-You CAN modify the code (and spread the modifications) IF you credit me for the original
-code, AND add a note that you've changed it.
+License: MIT/BSD. Basically, do whatever you want, but credit me. Don't say
+you wrote this. You CAN modify the code (and spread the modifications) IF you 
+credit me for the original code, AND add a note that you've changed it.
 
 Bare-minimum example (see the example folder for a slightly larger one)
 
@@ -143,7 +143,7 @@ uint8_t writeChunk(uint32_t fulladdr, byte *data, uint8_t byteToWrite)
 ---------------------------
 
 That's it, folks!
-I think that's fairly extensively documented (or such a small project), but if 
+I think that's fairly extensively documented (for such a small project), but if
 you need help, wonder something, find a bug etc., or anything else - email me 
 (and don't worry about doing so!).
 
