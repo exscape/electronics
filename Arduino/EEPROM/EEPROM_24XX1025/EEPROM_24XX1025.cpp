@@ -11,11 +11,11 @@
  * http://dsscircuits.com/articles/arduino-i2c-master-library.html
  * Changes were made to support 16-bit addresses and acknowledge polling.
  * The unmodified version WILL NOT WORK with this code!
+ *
+ * License: MIT/BSD. Basically, do whatever you want, but credit me. Don't say you wrote this.
+ * You CAN modify the code (and spread the modifications) IF you credit me for the original
+ * code, AND add a note that you've changed it.
  */
-
-// TODO ITEMS STILL LEFT:
-// TODO: final testing, after the code may be 100% finished
-// TODO: clean up indentation (once again before v1.0 though)
 
 // Finds the block number (0 or 1) from a 17-bit address
 #define BLOCKNUM(addr) (( (addr) & (1UL << 16)) >> 16)
@@ -104,11 +104,11 @@ uint8_t EEPROM_24XX1025::writeSinglePage(uint32_t fulladdr, byte *data, uint8_t 
   uint32_t end = micros();
 
   if (end - start < 500) {
-	  // This write took less than 500 us (typical is 3-4 ms). This most likely means
-	  // that the device is write protected, as it will acknowledge new command at once
-	  // when write protect is active.
-	  Serial.println("WARNING: EEPROM appears to be write protected!");
-	  return 0;
+    // This write took less than 500 us (typical is 3-4 ms). This most likely means
+    // that the device is write protected, as it will acknowledge new command at once
+    // when write protect is active.
+    Serial.println("WARNING: EEPROM appears to be write protected!");
+    return 0;
   }
 
   return bytesToWrite;
@@ -116,21 +116,22 @@ uint8_t EEPROM_24XX1025::writeSinglePage(uint32_t fulladdr, byte *data, uint8_t 
 
 // Private method
 uint8_t EEPROM_24XX1025::writeChunk(uint32_t fulladdr, byte *data, uint8_t bytesToWrite) {
-  // Used to turn 1-128 byte writes into full page writes (i.e. turn them into proper
-  // single-page writes)
+  // Used to turn 1-128 byte writes into full page writes (i.e. turn them into proper single-page writes)
   if (bytesToWrite == 0 || bytesToWrite > 128 || fulladdr > 131071)
     return 0;
 
+  // Calculate the 16-bit address, and the page number of the first and second (if applicable)
+  // blocks we're going to write to.
   uint32_t pageaddr = TO_PAGEADDR(fulladdr);
-  uint8_t first_block = BLOCKNUM(fulladdr);
-  uint8_t second_block = BLOCKNUM(fulladdr + bytesToWrite - 1);
+  uint8_t firstBlock = BLOCKNUM(fulladdr);
+  uint8_t secondBlock = BLOCKNUM(fulladdr + bytesToWrite - 1);
 
-  // These page numbers are *relative to the block number*, i.e. first_page = 0 may mean at byte 0 or byte 65536
-  // depending on first_block above. Same goes for second_page/second_block of course.
-  uint16_t first_page = pageaddr / 128; // pageaddr is already relative to block!
-  uint16_t second_page = (TO_PAGEADDR(pageaddr + bytesToWrite - 1))/128;
+  // These page numbers are *relative to the block number*, i.e. firstPage = 0 may mean at byte 0 or byte 65536
+  // depending on firstBlock above. Same goes for secondPage/secondBlock of course.
+  uint16_t firstPage = pageaddr / 128; // pageaddr is already relative to block!
+  uint16_t secondPage = (TO_PAGEADDR(pageaddr + bytesToWrite - 1))/128;
 
-  if (first_page == second_page && first_block == second_block) {
+  if (firstPage == secondPage && firstBlock == secondBlock) {
     // Data doesn't "cross the border" between pages. Easy!
     return writeSinglePage(fulladdr, data, bytesToWrite);
   }
@@ -139,21 +140,21 @@ uint8_t EEPROM_24XX1025::writeChunk(uint32_t fulladdr, byte *data, uint8_t bytes
     // past the edge of this page (addresses 0 - 127) and onto the next.
     // We need to split this write manually.
 
-    uint8_t bytes_in_first_page = ((first_page + 1) * 128) - pageaddr;
-    uint8_t bytes_in_second_page = bytesToWrite - bytes_in_first_page;
+    uint8_t bytesInFirstPage = ((firstPage + 1) * 128) - pageaddr;
+    uint8_t bytesInSecondPage = bytesToWrite - bytesInFirstPage;
 
     uint8_t ret = 0;
 
     // Write the data that belongs to the first page
-    if ((ret = writeSinglePage(TO_FULLADDR(first_block, pageaddr), data, bytes_in_first_page))
-      != bytes_in_first_page)
+    if ((ret = writeSinglePage(TO_FULLADDR(firstBlock, pageaddr), data, bytesInFirstPage))
+      != bytesInFirstPage)
     {
       return ret;
     }
 
     // Write the data that belongs to the second page
-    if ((ret = writeSinglePage(TO_FULLADDR(second_block, second_page * 128), data + bytes_in_first_page, bytes_in_second_page))
-      != bytes_in_second_page)
+    if ((ret = writeSinglePage(TO_FULLADDR(secondBlock, secondPage * 128), data + bytesInFirstPage, bytesInSecondPage))
+      != bytesInSecondPage)
     {
       return ret;
     }
@@ -263,11 +264,11 @@ boolean EEPROM_24XX1025::write(byte data) {
   uint32_t end = micros();
 
   if (end - start < 500) {
-	  // This write took less than 500 us (typical is 3-4 ms). This most likely means
-	  // that the device is write protected, as it will acknowledge new commands at once
-	  // when write protect is active.
-	  Serial.println("WARNING: EEPROM appears to be write protected!");
-	  return 0;
+    // This write took less than 500 us (typical is 3-4 ms). This most likely means
+    // that the device is write protected, as it will acknowledge new commands at once
+    // when write protect is active.
+    Serial.println("WARNING: EEPROM appears to be write protected!");
+    return 0;
   }
 
   return true; // success

@@ -1,6 +1,6 @@
 Microchip 24XX1025 I2C EEPROM driver for Arduino
 Tested with: Arduino Uno R3, 24LC1025 (5 V, 400 kHz I2C)
-Should work with: all Arduino compatible boards, all 24XX1025 models
+Should work with: all Arduino compatible boards, 24XX1025 models
 
 Written by Thomas Backman, August 2012
 
@@ -8,6 +8,10 @@ Uses a modified version of Wayne Truchsess' I2C Master library:
 http://dsscircuits.com/articles/arduino-i2c-master-library.html
 Changes were made to support 16-bit addresses and acknowledge polling.
 The unmodified version WILL NOT WORK with this code!
+
+License: MIT/BSD. Basically, do whatever you want, but credit me. Don't say you wrote this.
+You CAN modify the code (and spread the modifications) IF you credit me for the original
+code, AND add a note that you've changed it.
 
 Bare-minimum example (see the example folder for a slightly larger one)
 
