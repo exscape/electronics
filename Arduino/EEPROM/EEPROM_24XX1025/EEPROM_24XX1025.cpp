@@ -15,9 +15,7 @@
 
 // TODO ITEMS STILL LEFT:
 // TODO: final testing, after the code may be 100% finished
-// TODO: write a proper README/docs
 // TODO: clean up indentation (once again before v1.0 though)
-// TODO: test write protect - what happens? Graceful handling? (Ack polling will return at once - use as a hint!!!)
 
 // Finds the block number (0 or 1) from a 17-bit address
 #define BLOCKNUM(addr) (( (addr) & (1UL << 16)) >> 16)
@@ -99,8 +97,18 @@ uint8_t EEPROM_24XX1025::writeSinglePage(uint32_t fulladdr, byte *data, uint8_t 
   // Wait for the EEPROM to finish this write. To do so, we use acknowledge polling,
   // a technique described in the datasheet. We sent a START condition and the device address
   // byte, and see if the device acknowledges (pulls SDA low) or not. Loop until it does.
+  uint32_t start = micros();
   while (I2c16.acknowledgePoll(devaddr | ((BLOCKNUM(fulladdr)) << 2)) == 0) {
     delayMicroseconds(20);
+  }
+  uint32_t end = micros();
+
+  if (end - start < 500) {
+	  // This write took less than 500 us (typical is 3-4 ms). This most likely means
+	  // that the device is write protected, as it will acknowledge new command at once
+	  // when write protect is active.
+	  Serial.println("WARNING: EEPROM appears to be write protected!");
+	  return 0;
   }
 
   return bytesToWrite;
@@ -245,11 +253,21 @@ boolean EEPROM_24XX1025::write(byte data) {
     eeprom_pos = 0xffffffff; // Not sure what the internal counter does. It PROBABLY resets to 0, but...
   }
 
-  // Wait for the EEPROM to finish this write. To do so, we use acknowledge polling;
-  // a a technique described in the datasheet. We sent a START condition and the device address
+  // Wait for the EEPROM to finish this write. To do so, we use acknowledge polling,
+  // a technique described in the datasheet. We sent a START condition and the device address
   // byte, and see if the device acknowledges (pulls SDA low) or not. Loop until it does.
+  uint32_t start = micros();
   while (I2c16.acknowledgePoll(devaddr | (block << 2)) == 0) {
     delayMicroseconds(20);
+  }
+  uint32_t end = micros();
+
+  if (end - start < 500) {
+	  // This write took less than 500 us (typical is 3-4 ms). This most likely means
+	  // that the device is write protected, as it will acknowledge new commands at once
+	  // when write protect is active.
+	  Serial.println("WARNING: EEPROM appears to be write protected!");
+	  return 0;
   }
 
   return true; // success
