@@ -17,6 +17,7 @@
 // TODO: final testing, after the code may be 100% finished
 // TODO: write a proper README/docs
 // TODO: clean up indentation (once again before v1.0 though)
+// TODO: test write protect - what happens? Graceful handling? (Ack polling will return at once - use as a hint!!!)
 
 // Finds the block number (0 or 1) from a 17-bit address
 #define BLOCKNUM(addr) (( (addr) & (1UL << 16)) >> 16)

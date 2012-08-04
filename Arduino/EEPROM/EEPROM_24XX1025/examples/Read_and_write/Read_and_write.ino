@@ -1,9 +1,10 @@
-#include <I2C16.h>
+#include <I2C16.h>           // Don't miss this line!
 #include <EEPROM_24XX1025.h>
 
-// Initialize the EEPROM with address bits A1 = 0, A0 = 0
-// (set by connecting the physical pins to either ground (0) or VDD (1))
-EEPROM_24XX1025 eeprom (0,0);
+// Initialize the EEPROM with address bits A0 = 0, A1 = 0 (in that order)
+// This is set by connecting the physical pins 1 and 2
+// to either ground (for 0) or VDD (for 11).
+EEPROM_24XX1025 eeprom (0, 1);
 
 void setup() {
   // Set up serial. NOTE: You need to set the Arduino
