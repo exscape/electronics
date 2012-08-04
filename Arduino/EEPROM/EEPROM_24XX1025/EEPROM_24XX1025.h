@@ -5,19 +5,17 @@
 
 class EEPROM_24XX1025 {
 public:
-  EEPROM_24XX1025(byte A0, byte A1) 
-  { 
+  EEPROM_24XX1025(byte A0, byte A1)
+  {
     I2c16.begin();
     I2c16.setSpeed(true); // set 400 kHz clock frequency
     curpos = 0;
     eeprom_pos = 0xffffffff;
-    devaddr = 0x50 /* 1010 binary (shifted left), see datasheet */ | (A1 << 2) | (A0 << 1); 
+    devaddr = 0x50 /* 1010 binary (shifted left), see datasheet */ | (A1 << 1) | (A0 << 0);
   }
 
-  uint32_t getPosition(void) { 
-    return curpos; 
-  }
-  boolean setPosition(uint32_t pos) { 
+  uint32_t getPosition(void) { return curpos; }
+  boolean setPosition(uint32_t pos) {
     if (pos < 131072) {
       curpos = pos; /* eeprom_pos is UNCHANGED! */
       return true;

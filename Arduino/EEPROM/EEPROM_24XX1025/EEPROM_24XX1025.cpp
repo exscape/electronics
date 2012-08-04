@@ -1,28 +1,22 @@
-#include <I2C16.h>
-#include <EEPROM_24XX1025.h>
+#include "EEPROM_24XX1025.h"
 
-// Written by Thomas Backman, Aug 2012
-// for the Microship 24LC1025 I2C EEPROM chip. Likely works with others 
-// after (possibly semi-heavy) modification
-// (24XX1025 where XX = AA, LC or FC should all work unmodified),
-// but I don't have any other EEPROM chips whatsoever to test with.
-
-// Uses a modified version of the I2C library, written by Wayne Truchsess.
-// That library is separately licensed, etc (under the LGPL).
-// http://dsscircuits.com/articles/arduino-i2c-master-library.html
-// Please note that I had to modify the library to use 2-byte (rather than 1-byte) addresses!
-// The unmodified version **WILL NOT WORK** together with this code!
-
-// FINISHED TODO ITEMS?
-// TODO: ensure that reading and writing across both page and *BLOCK* boundaries always works
-// TODO: better error handling, i.e. check ALL read/write return values (including readBlock/writeBlock += loops)
-// TODO: clean up indentation (once again before v1.0 though)
+/*
+ * Microchip 24XX1025 I2C EEPROM driver for Arduino
+ * Tested with: Arduino Uno R3, 24LC1025 (5 V, 400 kHz I2C)
+ * Should work with: all Arduino compatible boards, 24XX1025 models
+ *
+ * Written by Thomas Backman, August 2012
+ *
+ * Uses a modified version of Wayne Truchsess' I2C Master library:
+ * http://dsscircuits.com/articles/arduino-i2c-master-library.html
+ * Changes were made to support 16-bit addresses and acknowledge polling.
+ * The unmodified version WILL NOT WORK with this code!
+ */
 
 // TODO ITEMS STILL LEFT:
-// TODO: multiple devices ?
-// TODO: bundle w/ the **MODIFIED** I2C library - licensing etc.!
-// TODO: search for "TODO"! ;)
-// Test: various A1/A0 address bits
+// TODO: final testing, after the code may be 100% finished
+// TODO: write a proper README/docs
+// TODO: clean up indentation (once again before v1.0 though)
 
 // Finds the block number (0 or 1) from a 17-bit address
 #define BLOCKNUM(addr) (( (addr) & (1UL << 16)) >> 16)
@@ -100,9 +94,9 @@ uint8_t EEPROM_24XX1025::writeSinglePage(uint32_t fulladdr, byte *data, uint8_t 
     eeprom_pos += bytesToWrite;
     curpos += bytesToWrite;
   }
-  
-  // Wait for the EEPROM to finish this write. To do so, we use acknowledge polling;
-  // a a technique described in the datasheet. We sent a START condition and the device address
+
+  // Wait for the EEPROM to finish this write. To do so, we use acknowledge polling,
+  // a technique described in the datasheet. We sent a START condition and the device address
   // byte, and see if the device acknowledges (pulls SDA low) or not. Loop until it does.
   while (I2c16.acknowledgePoll(devaddr | ((BLOCKNUM(fulladdr)) << 2)) == 0) {
     delayMicroseconds(20);
@@ -202,7 +196,7 @@ uint32_t EEPROM_24XX1025::read(uint32_t fulladdr, byte *data, uint32_t bytesToRe
   if (fulladdr + bytesToRead > 131071)
     bytesToRead = 131072 - fulladdr; // constrain read size to end of device
 
-  const uint32_t chunksize = 240; // bytes to read per chunk
+  const uint32_t chunksize = 240; // bytes to read per chunk. Must be smaller than 255.
 
   // If we get here, we have a >255 byte read that is now constrained to a valid range.
   uint32_t bytesRead = 0;
@@ -216,7 +210,7 @@ uint32_t EEPROM_24XX1025::read(uint32_t fulladdr, byte *data, uint32_t bytesToRe
       return bytesRead; // Failure!
   }
 
-  return bytesRead;   
+  return bytesRead;
 }
 
 boolean EEPROM_24XX1025::write(byte data) {
@@ -230,7 +224,7 @@ boolean EEPROM_24XX1025::write(byte data) {
   // writeByte 128 times will use 128 page "lives", spread over 1 or 2 pages.
 
   // Find which block the byte is in, based on the full (17-bit) address.
-  // We can only supply 16 bits to the EEPROM, plus a separate "block select" bit.  
+  // We can only supply 16 bits to the EEPROM, plus a separate "block select" bit.
   uint8_t block = BLOCKNUM(curpos);
 
   uint8_t ret = I2c16.write((uint8_t)(devaddr | (block << 2)), TO_PAGEADDR(curpos), data);
@@ -249,7 +243,7 @@ boolean EEPROM_24XX1025::write(byte data) {
     curpos = 0;
     eeprom_pos = 0xffffffff; // Not sure what the internal counter does. It PROBABLY resets to 0, but...
   }
-  
+
   // Wait for the EEPROM to finish this write. To do so, we use acknowledge polling;
   // a a technique described in the datasheet. We sent a START condition and the device address
   // byte, and see if the device acknowledges (pulls SDA low) or not. Loop until it does.
