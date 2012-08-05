@@ -1,6 +1,6 @@
 /*
  * Microchip MCP4901 / MCP4911 / MCP4921 8/10/12-bit DAC driver
- * Thomas Backman, 2012-07 (made a proper module 2011-07-30, 3 weeks after initial)
+ * Thomas Backman, 2012-07 (made a proper library 2011-07-30, 3 weeks after initial)
  * serenity@exscape.org
  
  * Code license: BSD/MIT. Whatever; I *prefer* to be credited,

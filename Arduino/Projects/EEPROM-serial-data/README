@@ -1,0 +1,5 @@
+A set of two programs, one for regular computers (in Python), one for the
+Arduino, used to transfer data from a computer to an EEPROM chip connected
+to the Arduino.
+
+I made the protocol up, as I needed something simple and easy.
