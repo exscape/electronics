@@ -34,11 +34,12 @@ void loop() {
 
 Simple function overview:
 
-Constructor (DAC_MCP49x1)
+Constructor (DAC_MCP49x1, int SS_pin, int LDAC_pin = -1)
 	Takes three arguments: the DAC model (MCP4901, MCP4911 or MCP4921), the chip
 	select pin, and the LDAC pin.
 	If the LDAC functionality isn't wanted (if you don't know, you likely don't
-	want it), pass -1 as the LDAC pin and make sure that pin is tied to ground.
+	want it), make sure the LDAC pin is tied to ground, and simply ignore that
+	argument (or pass -1).
 
 setBuffer(bool)
 	Should the DAC buffer the reference voltage?

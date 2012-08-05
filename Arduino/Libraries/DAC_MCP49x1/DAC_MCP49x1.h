@@ -16,7 +16,7 @@ class DAC_MCP49x1 {
 		MCP4921
 	};
     
-    DAC_MCP49x1(Model _model, int _ss_pin, int _ldac_pin);
+    DAC_MCP49x1(Model _model, int _ss_pin, int _ldac_pin = -1);
     void setBuffer(boolean _buffer) { this->bufferVref = _buffer; }
     void setPortWrite(boolean _port_write) { this->port_write = _port_write; }
     boolean setGain(int _gain);
