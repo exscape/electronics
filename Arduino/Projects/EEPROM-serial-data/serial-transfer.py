@@ -1,3 +1,4 @@
+# serial is the pySerial module
 import serial, sys, os
 from time import sleep
 
@@ -69,11 +70,15 @@ sys.stdout.flush()
 sleep(3)
 print 'done!'
 
+# Used for the progress display
+last_len = 0
+print 'Transfer progress:',
+
 while bytesToSend > bytesSent:
 	# Calculate and send the length of this chunk (1-128 bytes)
 	chunksize = min(128, bytesToSend - bytesSent)
 	s.write(chr(chunksize))
-	print 'In loop. {0} bytes sent, {1} bytes to go. {2} bytes in this chunk'.format(bytesSent, bytesToSend - bytesSent, chunksize)
+#print 'In loop. {0} bytes sent, {1} bytes to go. {2} bytes in this chunk'.format(bytesSent, bytesToSend - bytesSent, chunksize)
 
 	# Did we get an ACK?
 	response = s.read()
@@ -82,7 +87,7 @@ while bytesToSend > bytesSent:
 		print >> sys.stderr, "Exiting."
 		sys.exit(16)
 	
-	print 'ACK received, sending data'
+#print 'ACK received, sending data'
 	# Send the data
 	s.write(data[bytesSent : bytesSent + 128])
 
@@ -93,7 +98,7 @@ while bytesToSend > bytesSent:
 		print >> sys.stderr, "Exiting."
 		sys.exit(16)
 	
-	print 'ACK received; write cycle underway. Waiting for RDY...'
+#print 'ACK received; write cycle underway. Waiting for RDY...'
 	# We got an ACK; device should now be writing. Wait for the ready byte. If received, loop again.
 	response = s.read()
 	if not (len(response) == 1 and ord(response) == RDY):
@@ -101,14 +106,21 @@ while bytesToSend > bytesSent:
 		print >> sys.stderr, "Exiting."
 		sys.exit(16)
 	
-	print 'RDY received. Looping...'
+#print 'RDY received. Looping...'
 
 	bytesSent += chunksize
 
-print 'Loop finished.'
+# Print progress
+	for i in range (0, last_len): sys.stdout.write('\b')
+	out = str(round(float(bytesSent)/bytesToSend * 100, 1)) + ' %'
+	print out,
+	last_len = len(out)
+	sys.stdout.flush()
+
+print "\nLoop finished."
 if bytesToSend == bytesSent:
 	s.write(chr(END))
 	print 'Successfully transferred {0} bytes!'.format(bytesSent)
 else:
-	print 'Something bad happened! bytesToSend={0} bytesSent{0}'.format(bytesToSend, bytesSent)
+	print 'Something bad happened! bytesToSend={0} bytesSent{1}'.format(bytesToSend, bytesSent)
 	sys.exit(32)
