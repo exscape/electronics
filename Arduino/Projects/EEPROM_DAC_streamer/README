@@ -1,0 +1,12 @@
+Reads wave data (unsigned, 8-bit, max ~20200 Hz sample rate) wave file data 
+from an EEPROM, and feeds it to a DAC. While it should be part-trivial to use
+other EEPROMs/DACs, they have to meet the strict timing constraints... 
+especially the DAC. The EEPROM I use is slow (400 kHz I2C, in practice ~31
+kilobytes/sec), so 44 kHz sample rate is impossible, as one sample is one byte.
+
+I doubt this is very useful to anyone, at least as-is, but I see no reason to
+not share it when doing so is so easy.
+
+As for licensing, I don't really care. If you use it with few modifications,
+I prefer being credited somewhere (in the code if open source, at least)... but
+I'm hardly going to enforce anything.
