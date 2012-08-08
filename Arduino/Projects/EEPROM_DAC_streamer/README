@@ -4,8 +4,16 @@ other EEPROMs/DACs, they have to meet the strict timing constraints...
 especially the DAC. The EEPROM I use is slow (400 kHz I2C, in practice ~31
 kilobytes/sec), so 44 kHz sample rate is impossible, as one sample is one byte.
 
+Written for the Microchip 24XX1025 (1024 kbit) I2C EEPROM and the Microchip
+MCP49x1 DACs (specfically the MCP4901, the 8-bit version). (I'm not affiliated 
+with Microchip, but their stuff is generally high up on the lowest-price-first
+sort, and I haven't ran in to anything to complain about yet!)
+
+This project is used together with something that can write the data to the
+EEPROM in the first place, such as my EEPROM-serial-data project.
+
 I doubt this is very useful to anyone, at least as-is, but I see no reason to
-not share it when doing so is so easy.
+not share it when doing so is so easy!
 
 As for licensing, I don't really care. If you use it with few modifications,
 I prefer being credited somewhere (in the code if open source, at least)... but
