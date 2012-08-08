@@ -17,6 +17,8 @@
  * code, AND add a note that you've changed it.
  */
 
+#define DEVICE_SIZE 131072
+
 // Finds the block number (0 or 1) from a 17-bit address
 #define BLOCKNUM(addr) (( (addr) & (1UL << 16)) >> 16)
 
@@ -30,10 +32,10 @@
 
 // Private method
 uint8_t EEPROM_24XX1025::readChunk(uint32_t fulladdr, byte *data, uint8_t bytesToRead) {
-  if (bytesToRead == 0 || fulladdr > 131071)
+  if (bytesToRead == 0 || fulladdr >= DEVICE_SIZE)
     return 0;
-  if (fulladdr + bytesToRead > 131071)
-    bytesToRead = 131072 - fulladdr;
+  if (fulladdr + bytesToRead > DEVICE_SIZE)
+    bytesToRead = DEVICE_SIZE - fulladdr;
 
   uint8_t err = 0;
   if (fulladdr < 65536 && fulladdr + bytesToRead > 65536) {
@@ -52,11 +54,15 @@ uint8_t EEPROM_24XX1025::readChunk(uint32_t fulladdr, byte *data, uint8_t bytesT
     if (err) {
       eeprom_pos = 0xffffffff;
       curpos += (65536 - fulladdr); // move the cursor forward the amount we read successfully
+      if (curpos >= DEVICE_SIZE)
+        curpos %= DEVICE_SIZE;
       return (uint8_t)(65536 - fulladdr); // num bytes read previously
     }
     else {
       eeprom_pos = TO_FULLADDR(1, bytesToRead - (65536 - fulladdr));
       curpos += bytesToRead;
+      if (curpos >= DEVICE_SIZE)
+        curpos %= DEVICE_SIZE;
       return bytesToRead;
     }
   }
@@ -71,6 +77,8 @@ uint8_t EEPROM_24XX1025::readChunk(uint32_t fulladdr, byte *data, uint8_t bytesT
     else {
       eeprom_pos += bytesToRead;
       curpos += bytesToRead;
+      if (curpos >= DEVICE_SIZE)
+        curpos %= DEVICE_SIZE;
       return bytesToRead;
     }
   }
@@ -92,6 +100,8 @@ uint8_t EEPROM_24XX1025::writeSinglePage(uint32_t fulladdr, byte *data, uint8_t 
     // Try to keep track of the internal counter
     eeprom_pos += bytesToWrite;
     curpos += bytesToWrite;
+    if (curpos >= DEVICE_SIZE)
+      curpos %= DEVICE_SIZE;
   }
 
   // Wait for the EEPROM to finish this write. To do so, we use acknowledge polling,
@@ -117,8 +127,11 @@ uint8_t EEPROM_24XX1025::writeSinglePage(uint32_t fulladdr, byte *data, uint8_t 
 // Private method
 uint8_t EEPROM_24XX1025::writeChunk(uint32_t fulladdr, byte *data, uint8_t bytesToWrite) {
   // Used to turn 1-128 byte writes into full page writes (i.e. turn them into proper single-page writes)
-  if (bytesToWrite == 0 || bytesToWrite > 128 || fulladdr > 131071)
+  if (bytesToWrite == 0 || bytesToWrite > 128 || fulladdr >= DEVICE_SIZE)
     return 0;
+
+  if (fulladdr + bytesToWrite > DEVICE_SIZE)
+	  bytesToWrite = DEVICE_SIZE - fulladdr;
 
   // Calculate the 16-bit address, and the page number of the first and second (if applicable)
   // blocks we're going to write to.
@@ -185,9 +198,9 @@ byte EEPROM_24XX1025::read(void) {
     // Seems to wrap here. The datasheet could be read as if this were 17-bit, but I don't think it is.
     eeprom_pos = 0;
   }
-  if (curpos > 131071) {
+  if (curpos >= DEVICE_SIZE) {
     // Wrap around if we overflow the device capacity.
-    curpos = 0;
+    curpos %= DEVICE_SIZE;
     eeprom_pos = 0xffffffff;
   }
 
@@ -203,8 +216,8 @@ uint32_t EEPROM_24XX1025::read(uint32_t fulladdr, byte *data, uint32_t bytesToRe
     return 0;
   if (bytesToRead <= 255)
     return readChunk(fulladdr, data, bytesToRead); // can be handled without this function
-  if (fulladdr + bytesToRead > 131071)
-    bytesToRead = 131072 - fulladdr; // constrain read size to end of device
+  if (fulladdr + bytesToRead >= DEVICE_SIZE)
+    bytesToRead = DEVICE_SIZE - fulladdr; // constrain read size to end of device
 
   const uint32_t chunksize = 240; // bytes to read per chunk. Must be smaller than 255.
 
@@ -247,10 +260,9 @@ boolean EEPROM_24XX1025::write(byte data) {
 
   curpos++;
   eeprom_pos = curpos; // We changed the internal counter when we wrote the address just above.
-  if (curpos > 131071) {
-    // The two are equal, no need to check both.
+  if (curpos >= DEVICE_SIZE) {
     // Wrap around if we overflow the device capacity.
-    curpos = 0;
+    curpos %= DEVICE_SIZE;
     eeprom_pos = 0xffffffff; // Not sure what the internal counter does. It PROBABLY resets to 0, but...
   }
 
@@ -285,8 +297,8 @@ uint32_t EEPROM_24XX1025::write(uint32_t fulladdr, byte *data, uint32_t bytesToW
     return 0;
   if (bytesToWrite <= 128)
     return writeChunk(fulladdr, data, bytesToWrite);
-  if (fulladdr + bytesToWrite > 131071)
-    bytesToWrite = 131072 - fulladdr; // constrain read size to end of device
+  if (fulladdr + bytesToWrite >= DEVICE_SIZE)
+    bytesToWrite = DEVICE_SIZE - fulladdr; // constrain read size to end of device
 
   // If we get here, we have a >128 byte write that is now constrained to a valid range.
   uint32_t bytesWritten = 0;
