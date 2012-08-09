@@ -1,8 +1,6 @@
 #ifndef _DAC_MCP49x1_H
 #define _DAC_MCP49x1_H
 
-//#include <Arduino.h>
-
 // Microchip MCP4901/MCP4911/MCP4921 DAC driver
 // Thomas Backman, 2012
 

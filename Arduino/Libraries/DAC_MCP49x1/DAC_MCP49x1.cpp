@@ -62,7 +62,7 @@ DAC_MCP49x1::DAC_MCP49x1(DAC_MCP49x1::Model _model, int _ss_pin, int _LDAC_pin) 
 }
 
 // Sets the gain. These DACs support 1x and 2x gain.
-// vout = x/2^n * gain , where x = the argument to out(), n = number of DAC bits
+// vout = x/2^n * gain * VREF, where x = the argument to out(), n = number of DAC bits
 // Example: with 1x gain, set(100) on a 8-bit (256-step) DAC would give
 // an output voltage of 100/256 * VREF, while a gain of 2x would give
 // vout = 100/256 * VREF * 2
@@ -102,7 +102,11 @@ boolean DAC_MCP49x1::setSPIDivider(int _div) {
 // My measurements say ~160-180 µA active (unloaded vout), ~3.5 µA shutdown.
 // Time to settle on an output value increases from ~4.5 µs to ~10 µs, though (according to the datasheet).
 void DAC_MCP49x1::shutdown(void) {
-	digitalWrite(ss_pin, LOW); // Select the device
+	// Drive chip select low
+	if (this->port_write)
+		PORTB &= 0xfb; // Clear PORTB pin 2 = arduino pin 10
+	else
+		digitalWrite(ss_pin, LOW);
 
 	// Sending all zeroes should work, too, but I'm unsure whether there might be a switching time
 	// between buffer and gain modes, so we'll send them so that they have the same value once we
@@ -111,7 +115,11 @@ void DAC_MCP49x1::shutdown(void) {
 	SPI.transfer((out & 0xff00) >> 8);
 	SPI.transfer(out & 0xff);
 
-	digitalWrite(ss_pin, HIGH);
+	// Return chip select to high
+	if (this->port_write)
+		PORTB |= (1 << 2); // set PORTB pin 2 = arduino pin 10
+	else
+		digitalWrite(ss_pin, HIGH);
 }
 
 // Send a new value for the DAC to output.
