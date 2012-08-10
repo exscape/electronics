@@ -24,22 +24,32 @@ public:
       return false;
   }
 
-  byte read(void);
-  uint32_t read(byte *data, uint32_t bytesToRead); // reads from curpos
-  uint32_t read(uint32_t fulladdr, byte *data, uint32_t bytesToRead);
+  uint32_t read(const void *data, uint32_t bytesToRead); // reads from curpos
+  uint32_t read(uint32_t fulladdr, const void *data, uint32_t bytesToRead);
 
-  boolean write(byte data);
-  uint32_t write(byte *data, uint32_t bytesToWrite); // writes at curpos
-  uint32_t write(uint32_t fulladdr, byte *data, uint32_t bytesToWrite);
+  // These all read at the current position (use setPosition())
+  byte readByte(void);
+  float readFloat(void);
+  uint32_t readUInt(void);
+  int32_t readInt(void);
+
+  uint32_t write(const void *data, uint32_t bytesToWrite); // writes at curpos
+  uint32_t write(uint32_t fulladdr, const void *data, uint32_t bytesToWrite);
+
+  // These all write at the current position (use setPosition())
+  boolean writeByte(byte data);
+  boolean writeFloat(float data);
+  boolean writeUInt(uint32_t data);
+  boolean writeInt(int32_t data);
 
 private:
   uint8_t  devaddr;
   uint32_t curpos; // 16 bits only covers half of 128 kiB, we need 17 bits... so 32 it is
   uint32_t eeprom_pos; // a "copy" of the EEPROMs *INTERNAL* counter
 
-  uint8_t writeSinglePage(uint32_t fulladdr, byte *data, uint8_t bytesToWrite); // never spans multiple pages
-  uint8_t readChunk(uint32_t fulladdr, byte *data, uint8_t bytesToRead);  // reads a small chunk
-  uint8_t writeChunk(uint32_t fulladdr, byte *data, uint8_t byteToWrite); // writes a small chunk
+  uint8_t writeSinglePage(uint32_t fulladdr, const void *data, uint8_t bytesToWrite); // never spans multiple pages
+  uint8_t readChunk(uint32_t fulladdr, const void *data, uint8_t bytesToRead);  // reads a small chunk
+  uint8_t writeChunk(uint32_t fulladdr, const void *data, uint8_t byteToWrite); // writes a small chunk
 };
 
 #endif
