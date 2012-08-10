@@ -5,7 +5,7 @@
  * Tested with: Arduino Uno R3, 24LC1025 (5 V, 400 kHz I2C)
  * Should work with: all Arduino compatible boards, 24XX1025 models
  *
- * Written by Thomas Backman, August 2012
+ * Written by Thomas Backman <serenity@exscape.org>, August 2012
  *
  * Uses a modified version of Wayne Truchsess' I2C Master library:
  * http://dsscircuits.com/articles/arduino-i2c-master-library.html
