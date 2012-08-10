@@ -316,7 +316,7 @@ uint32_t EEPROM_24XX1025::write(uint32_t fulladdr, const void *data, uint32_t by
 }
 
 //
-// Helper functions for writing other forms of data, i.e. floats and ints.
+// Helper functions for reading/writing other forms of data (floats and ints)
 //
 
 float EEPROM_24XX1025::readFloat(void) {
