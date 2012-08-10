@@ -31,7 +31,7 @@
 #define TO_FULLADDR(block, page) (((uint32_t)(((uint32_t)block) << 16)) | (((uint32_t)(page))))
 
 // Private method
-uint8_t EEPROM_24XX1025::readChunk(uint32_t fulladdr, byte *data, uint8_t bytesToRead) {
+uint8_t EEPROM_24XX1025::readChunk(uint32_t fulladdr, const void *data, uint8_t bytesToRead) {
   if (bytesToRead == 0 || fulladdr >= DEVICE_SIZE)
     return 0;
   if (fulladdr + bytesToRead > DEVICE_SIZE)
@@ -43,14 +43,14 @@ uint8_t EEPROM_24XX1025::readChunk(uint32_t fulladdr, byte *data, uint8_t bytesT
     // by the EEPROM itself
 
     // Read part 1 (from the first block)
-    err = I2c16.read(devaddr, fulladdr /* always 16-bit */, 65536 - fulladdr, data);
+    err = I2c16.read(devaddr, fulladdr /* always 16-bit */, 65536 - fulladdr, (byte *)data);
     if (err) {
       eeprom_pos = 0xffffffff;
       return 0;
     }
 
     // Read part 2 (from the second block)
-    err = I2c16.read(devaddr | (1 << 2), 0, bytesToRead - (65536 - fulladdr), data + (uint16_t)((65536 - fulladdr)));
+    err = I2c16.read(devaddr | (1 << 2), 0, bytesToRead - (65536 - fulladdr), (byte *)data + (uint16_t)((65536 - fulladdr)));
     if (err) {
       eeprom_pos = 0xffffffff;
       curpos += (65536 - fulladdr); // move the cursor forward the amount we read successfully
@@ -69,7 +69,7 @@ uint8_t EEPROM_24XX1025::readChunk(uint32_t fulladdr, byte *data, uint8_t bytesT
   else {
     // Doesn't cross the block border, so we can do this in one read
     uint8_t block = BLOCKNUM(fulladdr);
-    err = I2c16.read(devaddr | (block << 2), TO_PAGEADDR(fulladdr), bytesToRead, data);
+    err = I2c16.read(devaddr | (block << 2), TO_PAGEADDR(fulladdr), bytesToRead, (byte *)data);
     if (err) {
       eeprom_pos = 0xffffffff;
       return 0;
@@ -85,12 +85,12 @@ uint8_t EEPROM_24XX1025::readChunk(uint32_t fulladdr, byte *data, uint8_t bytesT
 }
 
 // Private method
-uint8_t EEPROM_24XX1025::writeSinglePage(uint32_t fulladdr, byte *data, uint8_t bytesToWrite) {
+uint8_t EEPROM_24XX1025::writeSinglePage(uint32_t fulladdr, const void *data, uint8_t bytesToWrite) {
   // Writes 1 - 128 bytes, but only *within a single page*. Never crosses a page/block border.
   if (bytesToWrite == 0 | bytesToWrite > 128)
     return 0;
 
-  uint8_t ret = I2c16.write(devaddr | ((BLOCKNUM(fulladdr)) << 2), TO_PAGEADDR(fulladdr), data, bytesToWrite);
+  uint8_t ret = I2c16.write(devaddr | ((BLOCKNUM(fulladdr)) << 2), TO_PAGEADDR(fulladdr), (byte *)data, bytesToWrite);
   if (ret != 0) {
     // We can't be sure what the internal counter is now, since it looks like the write failed.
     eeprom_pos = 0xffffffff;
@@ -125,7 +125,7 @@ uint8_t EEPROM_24XX1025::writeSinglePage(uint32_t fulladdr, byte *data, uint8_t 
 }
 
 // Private method
-uint8_t EEPROM_24XX1025::writeChunk(uint32_t fulladdr, byte *data, uint8_t bytesToWrite) {
+uint8_t EEPROM_24XX1025::writeChunk(uint32_t fulladdr, const void *data, uint8_t bytesToWrite) {
   // Used to turn 1-128 byte writes into full page writes (i.e. turn them into proper single-page writes)
   if (bytesToWrite == 0 || bytesToWrite > 128 || fulladdr >= DEVICE_SIZE)
     return 0;
@@ -166,7 +166,7 @@ uint8_t EEPROM_24XX1025::writeChunk(uint32_t fulladdr, byte *data, uint8_t bytes
     }
 
     // Write the data that belongs to the second page
-    if ((ret = writeSinglePage(TO_FULLADDR(secondBlock, secondPage * 128), data + bytesInFirstPage, bytesInSecondPage))
+    if ((ret = writeSinglePage(TO_FULLADDR(secondBlock, secondPage * 128), (const void*)((byte *)data + bytesInFirstPage), bytesInSecondPage))
       != bytesInSecondPage)
     {
       return ret;
@@ -176,7 +176,7 @@ uint8_t EEPROM_24XX1025::writeChunk(uint32_t fulladdr, byte *data, uint8_t bytes
   return bytesToWrite;
 }
 
-byte EEPROM_24XX1025::read(void) {
+byte EEPROM_24XX1025::readByte(void) {
   // Reads a byte from the current position and returns it
 
   if (eeprom_pos != curpos) {
@@ -207,11 +207,11 @@ byte EEPROM_24XX1025::read(void) {
   return I2c16.receive(); // Returns 0 if no bytes are queued
 }
 
-uint32_t EEPROM_24XX1025::read(byte *data, uint32_t bytesToRead) {
+uint32_t EEPROM_24XX1025::read(const void *data, uint32_t bytesToRead) {
   return read(curpos, data, bytesToRead);
 }
 
-uint32_t EEPROM_24XX1025::read(uint32_t fulladdr, byte *data, uint32_t bytesToRead) {
+uint32_t EEPROM_24XX1025::read(uint32_t fulladdr, const void *data, uint32_t bytesToRead) {
   if (bytesToRead == 0)
     return 0;
   if (bytesToRead <= 255)
@@ -226,7 +226,7 @@ uint32_t EEPROM_24XX1025::read(uint32_t fulladdr, byte *data, uint32_t bytesToRe
   uint32_t t = 0;
 
   while (bytesRead < bytesToRead) {
-    t = readChunk(fulladdr + bytesRead, data + bytesRead, min(chunksize, bytesToRead - bytesRead));
+    t = readChunk(fulladdr + bytesRead, (const void*)((byte *)data + bytesRead), min(chunksize, bytesToRead - bytesRead));
     if (t == min(chunksize, bytesToRead - bytesRead))
       bytesRead += t;
     else
@@ -236,7 +236,7 @@ uint32_t EEPROM_24XX1025::read(uint32_t fulladdr, byte *data, uint32_t bytesToRe
   return bytesRead;
 }
 
-boolean EEPROM_24XX1025::write(byte data) {
+boolean EEPROM_24XX1025::writeByte(byte data) {
   // Writes a byte to the EEPROM.
   // WARNING: writing a single byte still uses a full page write,
   // so writing 128 sequential bytes instead of 1 page write
@@ -286,11 +286,11 @@ boolean EEPROM_24XX1025::write(byte data) {
   return true; // success
 }
 
-uint32_t EEPROM_24XX1025::write(byte *data, uint32_t bytesToWrite) {
+uint32_t EEPROM_24XX1025::write(const void *data, uint32_t bytesToWrite) {
   return write(curpos, data, bytesToWrite);
 }
 
-uint32_t EEPROM_24XX1025::write(uint32_t fulladdr, byte *data, uint32_t bytesToWrite) {
+uint32_t EEPROM_24XX1025::write(uint32_t fulladdr, const void *data, uint32_t bytesToWrite) {
   // Uses writeChunk to allow any-sized writes, not just <128 bytes
 
   if (bytesToWrite == 0)
@@ -305,7 +305,7 @@ uint32_t EEPROM_24XX1025::write(uint32_t fulladdr, byte *data, uint32_t bytesToW
   uint32_t t = 0;
 
   while (bytesWritten < bytesToWrite) {
-    t = writeChunk(fulladdr + bytesWritten, data + bytesWritten, min(128, bytesToWrite - bytesWritten));
+    t = writeChunk(fulladdr + bytesWritten, (const void*)((byte *)data + bytesWritten), min(128, bytesToWrite - bytesWritten));
     if (t == min(128, bytesToWrite - bytesWritten))
       bytesWritten += t;
     else
@@ -313,4 +313,53 @@ uint32_t EEPROM_24XX1025::write(uint32_t fulladdr, byte *data, uint32_t bytesToW
   }
 
   return bytesWritten;
+}
+
+//
+// Helper functions for writing other forms of data, i.e. floats and ints.
+//
+
+float EEPROM_24XX1025::readFloat(void) {
+  float data;
+  if (read(curpos, (const void*)&data, sizeof(float)) == sizeof(float))
+    return data;
+  else
+    return NAN;
+}
+
+boolean EEPROM_24XX1025::writeFloat(float data) {
+  if (write(curpos, (const void*)&data, sizeof(float)) == sizeof(float))
+    return true;
+  else
+    return false;
+}
+
+uint32_t EEPROM_24XX1025::readUInt(void) {
+  uint32_t data;
+  if (read(curpos, (const void*)&data, sizeof(uint32_t)) == sizeof(uint32_t))
+    return data;
+  else
+    return 0;
+}
+
+boolean EEPROM_24XX1025::writeUInt(uint32_t data) {
+  if (write(curpos, (const void*)&data, sizeof(uint32_t)) == sizeof(uint32_t))
+    return true;
+  else
+    return false;
+}
+
+int32_t EEPROM_24XX1025::readInt(void) {
+  int32_t data;
+  if (read(curpos, (const void*)&data, sizeof(int32_t)) == sizeof(int32_t))
+    return data;
+  else
+    return 0;
+}
+
+boolean EEPROM_24XX1025::writeInt(int32_t data) {
+  if (write(curpos, (const void*)&data, sizeof(int32_t)) == sizeof(int32_t))
+    return true;
+  else
+    return false;
 }
