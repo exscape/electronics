@@ -1,5 +1,13 @@
 EEPROM_24XX1025	KEYWORD1
 read	KEYWORD2
+readByte	KEYWORD2
+readInt	KEYWORD2
+readUInt	KEYWORD2
+readFloat	KEYWORD2
 write	KEYWORD2
+writeByte	KEYWORD2
+writeInt	KEYWORD2
+writeUInt	KEYWORD2
+writeFloat	KEYWORD2
 getPosition	KEYWORD2
 setPosition	KEYWORD2
