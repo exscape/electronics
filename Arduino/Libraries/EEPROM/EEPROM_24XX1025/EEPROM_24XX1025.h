@@ -1,7 +1,9 @@
 #ifndef _24XX1025_H
 #define _24HH1025_H
 
-#include <I2C16.h>
+#ifndef I2C16_h
+#error Please include I2C16.h before EEPROM_24XX1025.h!
+#endif
 
 class EEPROM_24XX1025 {
 public:

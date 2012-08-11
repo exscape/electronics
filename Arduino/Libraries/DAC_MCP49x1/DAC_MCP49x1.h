@@ -1,6 +1,10 @@
 #ifndef _DAC_MCP49x1_H
 #define _DAC_MCP49x1_H
 
+#ifndef _SPI_H_INCLUDED
+#error Please include SPI.h before DAC_MCP49x1.h!
+#endif
+
 // Microchip MCP4901/MCP4911/MCP4921 DAC driver
 // Thomas Backman, 2012
 
