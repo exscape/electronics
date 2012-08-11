@@ -3,12 +3,12 @@
 
 // Initialize the EEPROM with address bits A0 = 0, A1 = 0 (in that order)
 // This is set by connecting the physical pins 1 and 2
-// to either ground (for 0) or VDD (for 11).
+// to either ground (for 0) or VDD (for 1).
 EEPROM_24XX1025 eeprom (0, 0);
 
 void setup() {
   // Set up serial. NOTE: You need to set the Arduino
-  // serial console to 115200 baud as well!
+  // serial console to 115200 bps as well!
   Serial.begin(115200);
 }
 

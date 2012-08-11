@@ -2,7 +2,7 @@
 
 /*
  * Microchip 24XX1025 I2C EEPROM driver for Arduino
- * Tested with: Arduino Uno R3, 24LC1025 (5 V, 400 kHz I2C)
+ * Tested with: Arduino Uno R3, Microchip 24LC1025 (5 V, 400 kHz I2C)
  * Should work with: all Arduino compatible boards, 24XX1025 models
  *
  * Written by Thomas Backman <serenity@exscape.org>, August 2012
@@ -87,6 +87,7 @@ uint8_t EEPROM_24XX1025::readChunk(uint32_t fulladdr, const void *data, uint8_t 
 // Private method
 uint8_t EEPROM_24XX1025::writeSinglePage(uint32_t fulladdr, const void *data, uint8_t bytesToWrite) {
   // Writes 1 - 128 bytes, but only *within a single page*. Never crosses a page/block border.
+  // Enforcing this is up to the caller.
   if (bytesToWrite == 0 | bytesToWrite > 128)
     return 0;
 
@@ -115,7 +116,7 @@ uint8_t EEPROM_24XX1025::writeSinglePage(uint32_t fulladdr, const void *data, ui
 
   if (end - start < 500) {
     // This write took less than 500 us (typical is 3-4 ms). This most likely means
-    // that the device is write protected, as it will acknowledge new command at once
+    // that the device is write protected, as it will acknowledge new commands at once
     // when write protect is active.
     Serial.println("WARNING: EEPROM appears to be write protected!");
     return 0;
@@ -131,7 +132,7 @@ uint8_t EEPROM_24XX1025::writeChunk(uint32_t fulladdr, const void *data, uint8_t
     return 0;
 
   if (fulladdr + bytesToWrite > DEVICE_SIZE)
-	  bytesToWrite = DEVICE_SIZE - fulladdr;
+    bytesToWrite = DEVICE_SIZE - fulladdr;
 
   // Calculate the 16-bit address, and the page number of the first and second (if applicable)
   // blocks we're going to write to.
@@ -169,7 +170,7 @@ uint8_t EEPROM_24XX1025::writeChunk(uint32_t fulladdr, const void *data, uint8_t
     if ((ret = writeSinglePage(TO_FULLADDR(secondBlock, secondPage * 128), (const void*)((byte *)data + bytesInFirstPage), bytesInSecondPage))
       != bytesInSecondPage)
     {
-      return ret;
+      return bytesInFirstPage + ret;
     }
   }
 
