@@ -2,7 +2,7 @@
   I2C16.h   - I2C library
   Copyright (c) 2011-2012 Wayne Truchsess.  All right reserved.
 
-  Rev x.x - August 4th, 2012 - Thomas Backman
+  Rev x.x - August 4th, 2012 - modified by Thomas Backman <serenity@exscape.org>
   		  - Use 16-bit addresses
 		  - Add acknowledge polling support (used in e.g. Microchip EEPROMs)
   Rev 5.0 - January 24th, 2012

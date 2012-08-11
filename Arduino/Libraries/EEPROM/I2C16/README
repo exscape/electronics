@@ -1,6 +1,8 @@
 A modified version of Wayne Truchsess' I2C Master library.
 http://dsscircuits.com/articles/arduino-i2c-master-library.html
 
+Modified by Thomas Backman <serenity@exscape.org>
+
 Two noteworthy changes have been made:
 1) This version uses 16-bit addresses instead of 8-bit (thus the modified name)
 2) Supports "acknowledge polling", a technique used for the 24XX1025 EEPROM
@@ -9,6 +11,4 @@ This isn't intended to be a replacement for his library; on the contrary,
 I only expect this to be used with my 24XX1025 EEPROM library.
 Still, feel free to use it if you need the modifications.
 
-Needless to say, the LGPL license remains, as changing that isn't up to me.
-(AFAIK I have the right to release this under the full GPL, but why the heck
-would I make that change?)
+Needless to say, the LGPL license remains.

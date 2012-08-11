@@ -48,6 +48,13 @@ in the private ones.)
 Public methods, i.e. the ones you use
 -------------------------------------
 
+Some notes on types used below...
+  These are signed integers (can store positive and negative values): short, int, long, int8_t, int16_t, int32_t
+  These are unsigned integers (can only store positive, but goes twice as high): unsigned short, unsigned int, unsigned long, uint8_t,
+  uint16_t, uint32_t
+  There are helper functions provided for writing bytes (same as uint8_t), ints (int32_t), uints (uint32_t) and floats. If you really
+  need to store 16-bit ints and save those 2 bytes, you can use e.g. eeprom.write(&my_int, sizeof(int));
+
 Constructor (byte A0, byte A1)
   The constructor takes two address bits as arguments. These are set via the IC
   pins; see the datasheet. For 0, tie them to ground. For 1, tie them to VDD.
@@ -135,7 +142,7 @@ Private methods (only if you want to modify or fully understand this library)
 uint8_t devaddr
   Used to store the I2C device address, minus the R/W bit.
   The 24XX1025 has the format 1010 BXY (7 bits), where B is the block select bit
-  (basically the 16th address bit), X is the A1 chip select pin and Y is the
+  (basically the 17th address bit), X is the A1 chip select pin and Y is the
   A0 chip select pin. The A1/A0 bits are selected via physical pin wiring.
 
 uint32_t curpos

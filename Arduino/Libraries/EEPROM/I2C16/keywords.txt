@@ -21,7 +21,7 @@ write	KEYWORD2
 read	KEYWORD2
 available	KEYWORD2
 receive	KEYWORD2
-acknowledePoll	KEYWORD2
+acknowledgePoll	KEYWORD2
 
 #######################################
 # Instances (KEYWORD2)

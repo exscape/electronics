@@ -13,10 +13,12 @@ void setup() {
 }
 
 void loop() {
-  // Write something out. We unfortunately need to cast between
-  // char* and byte*.
-  byte *str = (byte *)"Hello, world!";
-  eeprom.write(0, str, strlen((char *)str));
+  // Write something out.
+  char *str = "Hello, world!";
+  eeprom.write(0, str, strlen(str));
+  eeprom.setPosition(16);
+  eeprom.writeFloat(12.34);
+  eeprom.writeInt(-1234);
 
   // Read it back in a loop
   while(true) {
@@ -26,16 +28,25 @@ void loop() {
     Serial.print("block read: ");
     Serial.println((char *)buf);
 
+    // Read the float
+    eeprom.setPosition(16);
+    Serial.print("Float: ");
+    Serial.println(eeprom.readFloat());
+
+    // Read the integer
+    Serial.print("Int: ");
+    Serial.println(eeprom.readInt());
+
     // Read byte-for-byte
     eeprom.setPosition(0);
     Serial.print("byte read : ");
 
     for (int i = 0; i < 13; i++) {
-      Serial.print( (char) eeprom.read() );
+      Serial.print( (char) eeprom.readByte() );
     }
 
     Serial.print("\n");
 
-    delay(2000);
+    delay(5000);
   }
 }
