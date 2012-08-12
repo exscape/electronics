@@ -23,7 +23,7 @@
  * (Pin 9, for the DFN package only: VSS)
 
  * Only tested on MCP4901 (8-bit), but it should work on the others as well.
- * Tested on an (official board) Arduino Uno R3.
+ * Tested on an Arduino Uno R3.
  */
 
 #include <SPI.h>
@@ -146,7 +146,7 @@ void DAC_MCP49x1::output(unsigned short data) {
 	// bit 13: gain bit; 0 for 1x gain, 1 for 2x (thus we NOT the wariable)
 	// bit 12: shutdown bit. 1 for active operation
 	// bits 11 through 0: data 
-	unsigned short out = (this->bufferVref << 14) | ((!this->gain2x) << 13) | (1 << 12) | (data << (12 - this->bitwidth));
+	uint16_t out = (this->bufferVref << 14) | ((!this->gain2x) << 13) | (1 << 12) | (data << (12 - this->bitwidth));
   
 	// Send the command and data bits
 	SPI.transfer((out & 0xff00) >> 8);

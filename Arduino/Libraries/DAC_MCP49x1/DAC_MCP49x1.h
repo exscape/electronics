@@ -1,6 +1,10 @@
 #ifndef _DAC_MCP49x1_H
 #define _DAC_MCP49x1_H
 
+#include <SPI.h>
+#include <Arduino.h>
+#include <inttypes.h>
+
 #ifndef _SPI_H_INCLUDED
 #error Please include SPI.h before DAC_MCP49x1.h!
 #endif

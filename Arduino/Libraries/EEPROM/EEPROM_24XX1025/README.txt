@@ -2,7 +2,7 @@ Microchip 24XX1025 I2C EEPROM driver for Arduino
 Tested with: Arduino Uno R3, 24LC1025 (5 V, 400 kHz I2C)
 Should work with: all Arduino compatible boards, 24XX1025 models
 
-Version 1.0 (August 11, 2012)
+Version 1.0 (August 12th, 2012)
 
 Written by Thomas Backman <serenity@exscape.org>
 

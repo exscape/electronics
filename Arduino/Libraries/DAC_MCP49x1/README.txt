@@ -1,5 +1,7 @@
 Arduino library for the Microchip MCP49x1 series DACs
-Thomas Backman, 2012
+Thomas Backman <serenity@exscape.org>, 2012
+
+Version 1.0 (August 12th, 2012)
 
 Supported models:
 * MCP4901 (8-bit)
@@ -79,7 +81,8 @@ setPortWrite(bool)
 	(That doesn't mean that the entire code is 30 times faster, but changing a pin value is.)
 
 	In order to use the faster method e.g. on the Arduino Uno, you must use pin 7 on the Uno for the LDAC pin, 
-	and pin 10 for the CS pin. Anything else won't work. If these pins are busy doing something else, you can't use this speed-up.
+	and pin 10 for the CS pin. Anything else won't work. If these pins are busy doing something else, you can't use this speed-up
+	without modifying the code.
 
 	Use these pins:
 
