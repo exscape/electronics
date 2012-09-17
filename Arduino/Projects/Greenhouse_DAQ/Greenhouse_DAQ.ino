@@ -43,11 +43,11 @@ device_list_t devices[NUM_SENSORS] =
 OneWire ds(ONEWIRE_PIN);
 
 // Set up the Ethernet connection
-EthernetClient client;
 byte mac[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 };
 IPAddress ip(192, 168, 2, 177);
 IPAddress serverip(192, 168, 2, 60); // TODO: make this server IP static!
 const uint16_t serverport = 40100;
+EthernetClient client;
 
 void panic(const char *str) {
   for(;;) {
@@ -231,6 +231,12 @@ void loop() {
   Serial.print("Sensor 1: ");
   Serial.print(sensor_1);
   Serial.println(" C");
+  
+  if (client.connected()) {
+    Serial.println("Still connected! Disconnecting...");
+    client.flush();
+    client.stop();
+  }
     
   if (client.connect(serverip, serverport)) {
     Serial.println("Connected to server");
@@ -243,18 +249,26 @@ void loop() {
     client.print(":");
     client.print((int32_t) (sensor_1 * 10000));
     client.print((char)0x0);
+    Serial.println("data sent, waiting for reply...");
 
    uint32_t start = millis();
    while (client.available() == 0 && millis() < start + 2000 && millis() >= start) { 
      // millis() >= start prevents an overflow to lock up the loop
      // Wait until server has responded, with a timeout of 2 seconds
    }
-    
+   uint32_t end_ = millis();
+   Serial.print(end_ - start);
+   Serial.println(" ms waited for available() to become nonzero");
+   
+   Serial.print("Reply: [");
    while (client.available()) {
      Serial.print((char)client.read());
    }
-   
-   Serial.print("\n");
+   Serial.println("]");
+   while (client.connected()) {
+     Serial.println("Waiting for disconnect...");
+   }
+   Serial.println("Calling client.stop()");
    client.stop();
   }
   else {
