@@ -47,7 +47,8 @@ byte mac[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 };
 IPAddress ip(192, 168, 2, 177);
 IPAddress serverip(192, 168, 2, 60); // TODO: make this server IP static!
 const uint16_t serverport = 40100;
-EthernetClient client;
+const uint16_t localport = 40100; // why not?
+EthernetUDP udp;
 
 void panic(const char *str) {
   for(;;) {
@@ -215,11 +216,18 @@ static byte count = 0;
   }
 }
 
+// Used to give each data packet (and response packet) a unique ID.
+// Won't wrap: 2^32 times 10 seconds per packet = ~1361 years!
+// ... and that would also require 100% consecutive uptime!
+uint32_t seq = 0;
+
 void loop() {
   while (time_to_work == false) { 
     // Flag is cleared by ISR
   }
   
+  udp.begin(localport);
+
   Serial.println("Starting temperature sampling...");
   float sensor_0 = readTemperature(0);
   float sensor_1 = readTemperature(1);
@@ -232,49 +240,64 @@ void loop() {
   Serial.print(sensor_1);
   Serial.println(" C");
   
-  if (client.connected()) {
-    Serial.println("Still connected! Disconnecting...");
-    client.flush();
-    client.stop();
-  }
-    
-  if (client.connect(serverip, serverport)) {
-    Serial.println("Connected to server");
-    Serial.print("Sending data... ");
-    // .print() only shows 2 decimals, and
-    // sprintf doesn't accept floats at all.
-    // Workaround: convert to signed integer, transmit,
-    // convert back on receiving end
-    client.print((int32_t) (sensor_0 * 10000));
-    client.print(":");
-    client.print((int32_t) (sensor_1 * 10000));
-    client.print((char)0x0);
-    Serial.println("data sent, waiting for reply...");
-
-   uint32_t start = millis();
-   while (client.available() == 0 && millis() < start + 2000 && millis() >= start) { 
-     // millis() >= start prevents an overflow to lock up the loop
-     // Wait until server has responded, with a timeout of 2 seconds
-   }
-   uint32_t end_ = millis();
-   Serial.print(end_ - start);
-   Serial.println(" ms waited for available() to become nonzero");
+  // .print() only shows 2 decimals, and
+  // sprintf doesn't accept floats at all.
+  // Workaround: convert to signed integer, transmit,
+  // convert back on receiving end
+  char buf[20] = {0};
+  sprintf(buf, "%ld:%ld SEQ %lu%c",
+    (int32_t)(sensor_0 * 10000),
+    (int32_t)(sensor_1 * 10000),
+    seq,
+    0);
    
-   Serial.print("Reply: [");
-   while (client.available()) {
-     Serial.print((char)client.read());
-   }
-   Serial.println("]");
-   while (client.connected()) {
-     Serial.println("Waiting for disconnect...");
-   }
-   Serial.println("Calling client.stop()");
-   client.stop();
+  udp.beginPacket(serverip, serverport);
+  udp.write(buf);
+  udp.endPacket();
+
+  int packetSize = 0;
+  uint32_t start = millis();
+
+  // Wait until we receive a reply, with a timeout of 2000 ms, and also break
+  // if the millis() counter wraps (every 49.7 days)
+  // We *might* time out early once every 49.7 days, which I won't bother fixing.
+  // That's 1 reading out of 429408 that might go missing.
+  do {
+    packetSize = udp.parsePacket();
+  }
+  while(packetSize <= 0 && millis() < start + 2000 && millis() >= start);
+
+  if (packetSize <= 0) {
+    Serial.println("TIMEOUT! Giving up.");
   }
   else {
-    Serial.println("Connection failed!");
-    client.stop();
+    char buffer[16] = {0};
+    memset(buffer, 0, 16);
+    udp.read(buffer, 15);
+    Serial.print("Response: [");
+    Serial.print(buffer);
+    Serial.println("]");
+
+    uint32_t recv_seq;
+    char stat[8] = {0};
+    sscanf(buffer, "%s SEQ %lu", stat, &recv_seq);
+
+    if (strcmp(stat, "OK") != 0) {
+      Serial.println("Invalid response! Status is not OK");
+      // TODO: handle error
+    }
+    if (recv_seq != seq) {
+      Serial.print("Invalid response! SEQ = "); Serial.print(recv_seq);
+      Serial.print(", but should have been "); Serial.println(seq);
+      // TODO: handle error
+    }
+
   }
+
+  seq++;
+  udp.flush();
+  udp.stop();
+
   Serial.println("");
   time_to_work = false;
 }
