@@ -40,6 +40,11 @@ device_list_t devices[NUM_SENSORS] =
   { { 0x10, 0x05, 0x5d, 0x2f, 0x02, 0x08, 0x00, 0xba }, false }
 };
 
+// Store the last reading, to remove outliers.
+// For some reason, the sensors sometimes return crazy-high values, i.e. jumps from ~20-23 C
+// straight to 85, then back again...
+float last_reading[NUM_SENSORS];
+
 OneWire ds(ONEWIRE_PIN);
 
 // Set up the Ethernet connection
@@ -122,7 +127,8 @@ float readTemperature(int dev) {
     panic("Invalid device number given to readTemperature()!");
   }
   
-  int tries = 0;
+  int crc_tries = 0;
+  bool have_retried_reading = false;
   restart_temp:
   
   ds.reset();
@@ -133,6 +139,7 @@ float readTemperature(int dev) {
   while (ds.read() == 0) {
     delayMicroseconds(50);
   }
+  delay(5);
 
   ds.reset();
   ds.select(devices[dev].addr);
@@ -148,8 +155,8 @@ float readTemperature(int dev) {
   crc = ds.read();
   
   if (OneWire::crc8(data, 8) != crc) {
-    tries++;
-    if (tries > 5) {
+    crc_tries++;
+    if (crc_tries > 5) {
       panic("Invalid data CRC, multiple times!");
     }
     goto restart_temp;
@@ -159,7 +166,7 @@ float readTemperature(int dev) {
 
 // Prettier names without extra RAM use. Ugly, yes, but this *is* embedded after all
 #define LSB (data[0])
-#define MSB (data[0])
+#define MSB (data[1])
 #define count_remain (data[6])
 #define count_per_c (data[7])
 
@@ -176,6 +183,24 @@ float readTemperature(int dev) {
     // resolution doesn't mean added *accuracy*.
     temp = (LSB >> 1) - 0.25 + (count_per_c - count_remain)/((float)count_per_c);
   }
+
+  // Remove extreme outliers. Since we sample very often, big changes between two readings
+  // are very unlikely.
+  if ((data[0] == 0xAA || fabs(last_reading[dev] - temp) >= 10) && have_retried_reading == false) {
+    // 0xAA is the sensor's default value (before taking readings), and is suspect.
+    // 0xAA = 85 C, which is higher than we'd expect for this sensor.
+    // Also retry if the difference between the last reading and this reading is too big.
+    // (This will always retry the first time after boot; doesn't really matter.)
+    Serial.print("WARNING: retrying reading for sensor ");
+    Serial.print(dev);
+    Serial.print("; reading differs too much from previous reading (delta C: ");
+    Serial.print(fabs(last_reading[dev] - temp));
+    Serial.println(").");
+    have_retried_reading = true;
+    goto restart_temp;
+  }
+
+  last_reading[dev] = temp;
 
   return temp;
 }
