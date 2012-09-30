@@ -23,6 +23,10 @@
 #define WIZRST 8
 #define ONEWIRE_PIN 9
 
+// The current UNIX timestamp. Updated from the server now and then,
+// and updated by the 1 Hz timer
+volatile uint32_t current_time = 0;
+
 // Simple alternative to a true associative array
 typedef struct {
   byte addr[8];
@@ -36,13 +40,15 @@ typedef struct {
 #define NUM_SENSORS 2
 device_list_t devices[NUM_SENSORS] = 
 {
-  { { 0x10, 0x3e, 0x3a, 0x2f, 0x02, 0x08, 0x00, 0xef }, false },
-  { { 0x10, 0x05, 0x5d, 0x2f, 0x02, 0x08, 0x00, 0xba }, false }
+//  { { 0x10, 0x3e, 0x3a, 0x2f, 0x02, 0x08, 0x00, 0xef }, false }, // Sensor 0
+//  { { 0x10, 0x05, 0x5d, 0x2f, 0x02, 0x08, 0x00, 0xba }, false }  // Sensor 1
+    { { 0x10, 0x66, 0x5d, 0x8d, 0x02, 0x08, 0x00, 0x8e }, false }, // Sensor 0, second finished cable
+    { { 0x10, 0x88, 0xbd, 0x8d, 0x02, 0x08, 0x00, 0x6e }, false } // Sensor 1, first finished cable
 };
 
 // Store the last reading, to remove outliers.
-// For some reason, the sensors sometimes return crazy-high values, i.e. jumps from ~20-23 C
-// straight to 85, then back again...
+// The sensors sometimes return 85 C (their default value). Since this *may* be valid
+// (though that is insanely unlikely for *this* project), we compare it to the previous reading.
 float last_reading[NUM_SENSORS];
 
 OneWire ds(ONEWIRE_PIN);
@@ -98,9 +104,14 @@ void findTemperatureSensors(void) {
       if (tries > 5) {
         panic("Device address CRC error, multiple times! Halting!");
       }
-      goto restart; //yaay. Still, adding a second loop to "make it acceptable" (no goto)
+      goto restart; // Yay. Still, adding a second loop to "make it acceptable" (no goto)
       // is not really better, is it?
     }
+
+    Serial.print("found sensor: ");
+    char buf[40] = {0};
+    addr_to_str(addr, buf);
+    Serial.println(buf);
 
     for (int i=0; i < NUM_SENSORS; i++) {
       if (memcmp(devices[i].addr, addr, 8) == 0) {
@@ -182,13 +193,17 @@ float readTemperature(int dev) {
     // mostly to get "less digital-looking" graphs, even though the added 
     // resolution doesn't mean added *accuracy*.
     temp = (LSB >> 1) - 0.25 + (count_per_c - count_remain)/((float)count_per_c);
+
+    // NEW: shift away one LSB, since that bit is only noise anyway - the graph often jumps
+    // between two values, back and forth, for hours.
+    // temp = (LSB >> 1) - 0.25 + ((count_per_c - count_remain) >> 1)/((float)(count_per_c >> 1));
   }
 
   // Remove extreme outliers. Since we sample very often, big changes between two readings
   // are very unlikely.
   if ((data[0] == 0xAA || fabs(last_reading[dev] - temp) >= 10) && have_retried_reading == false) {
-    // 0xAA is the sensor's default value (before taking readings), and is suspect.
-    // 0xAA = 85 C, which is higher than we'd expect for this sensor.
+    // 0xAA (85 C) is the sensor's default value (before taking readings), and is suspect,
+    // since it's higher than we'd expect for this sensor. Retry if that value is read.
     // Also retry if the difference between the last reading and this reading is too big.
     // (This will always retry the first time after boot; doesn't really matter.)
     Serial.print("WARNING: retrying reading for sensor ");
@@ -219,7 +234,7 @@ void setup() {
   cli();
   TCCR1A = 0;
   TCCR1B = 0;
-  OCR1A = 15624;
+  OCR1A = 15624; // 16 MHz / 1024 / 15625 [sic] = exactly 1 Hz
   TCCR1B |= (1 << WGM12);
   TCCR1B |= (1 << CS10) | (1 << CS12); // 1024 prescaler
   TIMSK1 |= (1 << OCIE1A);
@@ -233,12 +248,45 @@ volatile boolean time_to_work = false;
 ISR(TIMER1_COMPA_vect) {
 static byte count = 0;
   count++;
+  current_time++;
   if (count >= 10) {
     count = 0;
   
   // Wake the task loop!
   time_to_work = true;  
   }
+}
+
+void udpSendPacket(const char *str) {
+  udp.beginPacket(serverip, serverport);
+  udp.write(str);
+  udp.endPacket();
+}
+
+int udpRecvPacket(char *buf, uint16_t maxsize, uint16_t timeout) {
+  // buf: Where to store the data
+  // maxsize: how many bytes to store (i.e. typically the buffer size)
+  // timeout: timeout in milliseconds
+  // Return value: negative for errors, 0 for timeout, otherwise number of bytes
+  // received.
+
+  int packetSize = 0;
+  uint32_t start = millis();
+
+  // Wait until we receive a reply, with a timeout, and also break
+  // if the millis() counter wraps (every 49.7 days)
+  // We *might* time out early once every 49.7 days, which I won't bother fixing.
+  do {
+    packetSize = udp.parsePacket();
+  }
+  while(packetSize <= 0 && millis() < start + timeout && millis() >= start);
+
+  if (packetSize == 0) {
+    // We timed out! No data was received in time.
+    return 0;
+  }
+
+  return udp.read(buf, maxsize);
 }
 
 // Used to give each data packet (and response packet) a unique ID.
@@ -250,18 +298,16 @@ void loop() {
   while (time_to_work == false) { 
     // Flag is cleared by ISR
   }
-  
-  udp.begin(localport);
 
   Serial.println("Starting temperature sampling...");
-  float sensor_0 = readTemperature(0);
-  float sensor_1 = readTemperature(1);
-  
+
   Serial.print("Sensor 0: ");
+  float sensor_0 = readTemperature(0);
   Serial.print(sensor_0);
   Serial.println(" C");
 
   Serial.print("Sensor 1: ");
+  float sensor_1 = readTemperature(1);
   Serial.print(sensor_1);
   Serial.println(" C");
   
@@ -269,56 +315,56 @@ void loop() {
   // sprintf doesn't accept floats at all.
   // Workaround: convert to signed integer, transmit,
   // convert back on receiving end
-  char buf[20] = {0};
+  char buf[34] = {0};
   sprintf(buf, "%ld:%ld SEQ %lu%c",
     (int32_t)(sensor_0 * 10000),
     (int32_t)(sensor_1 * 10000),
     seq,
     0);
-   
-  udp.beginPacket(serverip, serverport);
-  udp.write(buf);
-  udp.endPacket();
 
-  int packetSize = 0;
-  uint32_t start = millis();
+  udp.begin(localport);
+  udpSendPacket(buf);
 
-  // Wait until we receive a reply, with a timeout of 2000 ms, and also break
-  // if the millis() counter wraps (every 49.7 days)
-  // We *might* time out early once every 49.7 days, which I won't bother fixing.
-  // That's 1 reading out of 429408 that might go missing.
-  do {
-    packetSize = udp.parsePacket();
+  memset(buf, 0, 34);
+  int ret = 0;
+  ret = udpRecvPacket(buf, 33, 2000);
+  if (ret <= 0) {
+    Serial.println("Failed to receive data: timeout/error");
+
+    // TODO: "cache" data if current_time is set properly (> 1348512615 for example.
+    // since it starts out at 0, any big number means it'll have synced the time prior
+    // to the downtime.)
+    goto loop_end;
   }
-  while(packetSize <= 0 && millis() < start + 2000 && millis() >= start);
+  /* else success */
 
-  if (packetSize <= 0) {
-    Serial.println("TIMEOUT! Giving up.");
-  }
-  else {
-    char buffer[16] = {0};
-    memset(buffer, 0, 16);
-    udp.read(buffer, 15);
-    Serial.print("Response: [");
-    Serial.print(buffer);
-    Serial.println("]");
+  Serial.print("Response: [");
+  Serial.print(buf);
+  Serial.println("]");
 
-    uint32_t recv_seq;
-    char stat[8] = {0};
-    sscanf(buffer, "%s SEQ %lu", stat, &recv_seq);
+  uint32_t recv_seq;
+  char stat[8];
+  memset(stat, 0, 8);
 
-    if (strcmp(stat, "OK") != 0) {
-      Serial.println("Invalid response! Status is not OK");
-      // TODO: handle error
-    }
-    if (recv_seq != seq) {
-      Serial.print("Invalid response! SEQ = "); Serial.print(recv_seq);
-      Serial.print(", but should have been "); Serial.println(seq);
-      // TODO: handle error
-    }
+  // Disable interrupts while modifying the timestamp, just in case
+  cli();
+  sscanf(buf, "%s SEQ %lu TIME %lu", stat, &recv_seq, &current_time);
+  sei();
+//  Serial.print("Time is now: ");
+//  Serial.println(current_time);
 
+  if (strcmp(stat, "OK") != 0) {
+    Serial.println("Invalid response! Status is not OK");
+    // TODO: handle error. For now, ignore it
   }
 
+  if (recv_seq != seq) {
+    Serial.print("Invalid response! SEQ = "); Serial.print(recv_seq);
+    Serial.print(", but should have been "); Serial.println(seq);
+    // TODO: handle error
+  }
+
+loop_end:
   seq++;
   udp.flush();
   udp.stop();
