@@ -1,5 +1,5 @@
 #include <SPI.h>         // Remember this line!
-#include <DAC_MCP49x1.h>
+#include <DAC_MCP49xx.h>
 
 // The Arduino pin used for the slave select / chip select
 #define SS_PIN 10
@@ -8,7 +8,7 @@
 // First argument: model (MCP4901, MCP4911, MCP4921)
 // Second argument: SS pin (10 is preferred)
 // (The third argument, the LDAC pin, can be left out if not used)
-DAC_MCP49x1 dac(DAC_MCP49x1::MCP4901, SS_PIN);
+DAC_MCP49xx dac(DAC_MCP49xx::MCP4901, SS_PIN);
 
 void setup() {
   // Set the SPI frequency to 1 MHz (on 16 MHz Arduinos), to be safe.

@@ -143,7 +143,7 @@ void DAC_MCP49x1::output(unsigned short data) {
 
 	// bit 15: always 0 (1 means "ignore this command")
 	// bit 14: buffer VREF?
-	// bit 13: gain bit; 0 for 1x gain, 1 for 2x (thus we NOT the wariable)
+	// bit 13: gain bit; 0 for 1x gain, 1 for 2x (thus we NOT the variable)
 	// bit 12: shutdown bit. 1 for active operation
 	// bits 11 through 0: data 
 	uint16_t out = (this->bufferVref << 14) | ((!this->gain2x) << 13) | (1 << 12) | (data << (12 - this->bitwidth));
