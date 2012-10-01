@@ -140,12 +140,9 @@ void DAC_MCP49xx::shutdown(void) {
     digitalWrite(ss_pin, HIGH);
 }
 
-// MCP49x1 (single DAC) only.
-// Send a new value for the DAC to output.
-// Note that the output is only actually changed when latch() is called,
-// if that functionality is used. If it's not, that pin (LDAC) can be
-// shorted to ground, and the above note doesn't apply.
-void DAC_MCP49xx::output(unsigned short data) {
+// Private function.
+// Called by the output* set of functions.
+void DAC_MCP49xx::_output(unsigned short data, Channel chan) {
   // Truncate the unused bits to fit the 8/10/12 bits the DAC accepts
   if (this->bitwidth == 12)
     data &= 0xfff;
@@ -160,12 +157,12 @@ void DAC_MCP49xx::output(unsigned short data) {
   else
     digitalWrite(ss_pin, LOW); 
 
-  // bit 15: always 0 (1 means "ignore this command" for MCP49x1 models)
+  // bit 15: 0 for DAC A, 1 for DAC B. (Always 0 for MCP49x1.)
   // bit 14: buffer VREF?
   // bit 13: gain bit; 0 for 1x gain, 1 for 2x (thus we NOT the variable)
   // bit 12: shutdown bit. 1 for active operation
   // bits 11 through 0: data 
-  uint16_t out = (0 << 15) | (this->bufferVref << 14) | ((!this->gain2x) << 13) | (1 << 12) | (data << (12 - this->bitwidth));
+  uint16_t out = (chan << 15) | (this->bufferVref << 14) | ((!this->gain2x) << 13) | (1 << 12) | (data << (12 - this->bitwidth));
   
   // Send the command and data bits
   SPI.transfer((out & 0xff00) >> 8);
@@ -178,61 +175,26 @@ void DAC_MCP49xx::output(unsigned short data) {
     digitalWrite(ss_pin, HIGH);
 }
 
+// For MCP49x1
+void DAC_MCP49xx::output(unsigned short data) {
+  this->_output(data, CHANNEL_A);
+}
+
+// For MCP49x2
+void DAC_MCP49xx::outputA(unsigned short data) {
+  this->_output(data, CHANNEL_A);
+}
+
+// For MCP49x2
+void DAC_MCP49xx::outputB(unsigned short data) {
+  this->_output(data, CHANNEL_B);
+}
+
 // MCP49x2 (dual DAC) only.
-// Send a new value for the DAC to output.
+// Send a set of new values for the DAC to output in a single function call
 void DAC_MCP49xx::output2(unsigned short data_A, unsigned short data_B) {
-  // Truncate the unused bits to fit the 8/10/12 bits the DAC accepts
-  if (this->bitwidth == 12) {
-    data_A &= 0xfff;
-    data_B &= 0xfff;
-  }
-  else if (this->bitwidth == 10) {
-    data_A &= 0x3ff;
-    data_B &= 0x3ff;
-  }
-  else if (this->bitwidth == 8) {
-    data_A &= 0xff;
-    data_B &= 0xff;
-  }
-
-  // Drive chip select low
-  if (this->port_write)
-    PORTB &= 0xfb; // Clear PORTB pin 2 = arduino pin 10
-  else
-    digitalWrite(ss_pin, LOW); 
-
-  // bit 15: 1 => B channel, 0 => A channel
-  // bit 14: buffer VREF?
-  // bit 13: gain bit; 0 for 1x gain, 1 for 2x (thus we negate the wariable)
-  // bit 12: shutdown bit. 1 for active operation
-  // bits 11 through 0: data 
-  uint16_t out_A = (0 << 15) | (this->bufferVref << 14) | ((!this->gain2x) << 13) | (1 << 12) | (data_A << (12 - this->bitwidth));
-  uint16_t out_B = (1 << 15) | (this->bufferVref << 14) | ((!this->gain2x) << 13) | (1 << 12) | (data_B << (12 - this->bitwidth));
-  
-  // Send the command and data bits for DAC A
-  SPI.transfer((out_A & 0xff00) >> 8);
-  SPI.transfer(out_A & 0xff);
-  
-  // Latch A register by setting CS high
-  if (this->port_write) {
-    PORTB |= (1 << 2); 
-    asm volatile("nop");
-    PORTB &= 0xfb; 
-  }
-  else {
-    digitalWrite(ss_pin, HIGH);
-    digitalWrite(ss_pin, LOW);
-  }
-  
-  // Send the command and data bits for DAC B
-  SPI.transfer((out_B & 0xff00) >> 8);
-  SPI.transfer(out_B & 0xff);
-  
-  // Return chip select to high
-  if (this->port_write)
-    PORTB |= (1 << 2); // set PORTB pin 2 = arduino pin 10
-  else
-    digitalWrite(ss_pin, HIGH);
+  this->_output(data_A, CHANNEL_A);
+  this->_output(data_B, CHANNEL_B);
   
   // Update the output, if desired.
   // The reason this is only in the dual-output version is simple: it's mostly useless

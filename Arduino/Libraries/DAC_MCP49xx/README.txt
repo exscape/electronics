@@ -34,6 +34,21 @@ void loop() {
 
 See the example sketches for slightly more detailed examples.
 
+A note on latching/LDAC:
+  The way these DACs work is as follows: when a value is sent to them via
+  the output*() methods, the output does not instantly change.
+  Instead, the DAC waits until the LDAC pin has been pulled low. Therefore,
+  if that pin is tied to ground, the output *will* instantly change.
+  However, if that pin is connected to the Arduino, you will need to latch
+  the output in order for a change to happen. There are two ways to do this:
+  1) Call latch(), which creates a low pulse
+  2) MCP49x2 only: call output2(), with the automaticallyLatchDual option set
+     (true by default), which will then call latch() for you
+
+  The main usage of this functionality is to synchronize multiple DACs (2 or more),
+  to make their outputs change at the same moment, despite having the data sent
+  to them one at a time.
+
 Simple function overview:
 
 Constructor (DAC_MCP49xx, int SS_pin, int LDAC_pin = -1)
@@ -70,18 +85,28 @@ shutdown(void)
 	Settling time after calling set() increases from ~5 to ~10 µs when in standby.
 
 output(unsigned short)
+	MCP49x1 (single DAC) only.
 	Sends the value to the DAC. If the LDAC pin is tied to ground, Vout will change "instantly".
 	If the LDAC pin is connected to the Arduino, nothing will change until latch() is called.
 
+outputA(unsigned short)
+	MCP49x2 (dual DAC) only.
+	Sends the value to DAC A. Same as output().
+
+outputB(unsigned short)
+	MCP49x2 (dual DAC) only.
+	Sends the value to DAC B. Otherwise same as output().
+
 output2(unsigned short, unsigned short)
 	Sends the two output values to the two outputs of the dual DACs.
-	Latches the output automatically unless setAutomaticallyLatchDual has been
+	Latches the output automatically unless setAutomaticallyLatchDual() has been
 	called with 'false' as the argument.
 
 latch(void)
-	Changes the output voltage based on the last value sent using output().
-	Creates a low pulse on the DACs LDAC pin (pin 5 on the DAC chip).
-	The LDAC pin can be tied to ground instead, to update automatically ASAP.
+	Changes the output voltage based on the last value(s) sent using the output*() methods.
+	Creates a low pulse on the DAC's LDAC pin (pin 5 on the DAC chip).
+	The LDAC pin can be tied to ground instead, to update automatically ASAP, in
+	which case this method does nothing.
 
 setPortWrite(bool)
 	Note: PortWrite is not supported on the Arduino Leonardo, but should work on

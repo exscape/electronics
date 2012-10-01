@@ -42,4 +42,9 @@ void loop() {
   delay(2500);
   dac.output2(0, 4095);
   delay(2500);
+
+  // Or, to update one channel at a time:
+  // dac.outputA(1023);
+  // dac.outputB(384);
+  // dac.latch(); // To synchonize the two outputs
 }
