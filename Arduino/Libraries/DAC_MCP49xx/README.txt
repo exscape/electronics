@@ -1,44 +1,44 @@
-Arduino library for the Microchip MCP49x1 series DACs
+Arduino library for the Microchip MCP49x1/MCP49x2 series DACs
 Thomas Backman <serenity@exscape.org>, 2012
 
-Version 1.0 (August 12th, 2012)
+Version 1.1 (September 30, 2012)
+(Changes from v1.0: Support for MCP49x2 series DACs added.)
 
 Supported models:
-* MCP4901 (8-bit)
-* MCP4911 (10-bit)
-* MCP4921 (12-bit)
-
-This code should be easy to "port" to the MCP4902/MCP4912/MCP4922 dual DACs,
-but I don't have any at home and would rather not release fully untested code.
+* MCP4901 (8-bit, single)
+* MCP4911 (10-bit, single)
+* MCP4921 (12-bit, single)
+* MCP4902 (8-bit, dual)
+* MCP4912 (10-bit, dual)
+* MCP4922 (12-bit, dual)
 
 Example usage:
 
 /////////////////////////////////
 
-#include <SPI.h>         // Please don't miss this line
-#include <DAC_MCP49x1.h>
+#include <SPI.h>         // Remember this line!
+#include <DAC_MCP49xx.h>
 
-DAC_MCP49x1 dac(DAC_MCP49x1::MCP4901, 10, 7); // DAC Model, SS pin, LDAC pin
+DAC_MCP49xx dac(DAC_MCP49xx::MCP4901, 10, 7); // DAC model, SS pin, LDAC pin
 
-void setup() {} // No setup code is necessary
+void setup() { } // No setup code is necessary
 
 void loop() {
-    dac.output(255);
-    dac.latch(); // this call is only necessary if the LDAC pin isn't tied to ground
-    delay(1000);
-    
-    dac.output(0);
-    dac.latch(); // same as above
-    delay(1000);
+  dac.output(255);
+  delay(2500);
+  dac.output(0);
+  delay(2500);
 }
 
 /////////////////////////////////
 
+See the example sketches for slightly more detailed examples.
+
 Simple function overview:
 
-Constructor (DAC_MCP49x1, int SS_pin, int LDAC_pin = -1)
-	Takes three arguments: the DAC model (MCP4901, MCP4911 or MCP4921), the chip
-	select pin, and the LDAC pin.
+Constructor (DAC_MCP49xx, int SS_pin, int LDAC_pin = -1)
+	Takes three arguments: the DAC model (MCP4901, MCP4911, MCP4921,
+	MCP4902, MCP4912 or MCP4922), the chip select pin, and the LDAC pin.
 	If the LDAC functionality isn't wanted (if you don't know, you likely don't
 	want it), make sure the LDAC pin is tied to ground, and simply ignore that
 	argument (or pass -1).
@@ -53,10 +53,17 @@ setGain(int)
 	For example, for a 8-bit DAC with gain 2x and VREF = 5 V where out(100) is
 	called, vout = 100/256 * 5 * 2 = 3.90625 V.
 	Only 1 and 2 are valid values!
+	Defaults to 1x.
 
 setSPIDivider(int)
 	Sets the SPI clock frequency. See the Arduino docs: http://arduino.cc/en/Reference/SPISetClockDivider
 	Uses the same constants (SPI_CLOCK_DIV2 etc.) as in the Arduino docs.
+
+setAutomaticallyLatchDual(bool)
+	If true: will automatically pull the LDAC pin low after output2() is called.
+	If false: won't do the above.
+	Only relevant for the MCP49x2 dual DACs.
+	Defaults to true.
 
 shutdown(void)
 	Shuts the DAC down to save power. (~3.5 µA in standby, ~150 µA powered up.)
@@ -65,6 +72,11 @@ shutdown(void)
 output(unsigned short)
 	Sends the value to the DAC. If the LDAC pin is tied to ground, Vout will change "instantly".
 	If the LDAC pin is connected to the Arduino, nothing will change until latch() is called.
+
+output2(unsigned short, unsigned short)
+	Sends the two output values to the two outputs of the dual DACs.
+	Latches the output automatically unless setAutomaticallyLatchDual has been
+	called with 'false' as the argument.
 
 latch(void)
 	Changes the output voltage based on the last value sent using output().
