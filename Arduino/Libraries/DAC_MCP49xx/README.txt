@@ -1,8 +1,10 @@
 Arduino library for the Microchip MCP49x1/MCP49x2 series DACs
 Thomas Backman <serenity@exscape.org>, 2012
 
-Version 1.1 (September 30, 2012)
-(Changes from v1.0: Support for MCP49x2 series DACs added.)
+Version 1.1 (October 2, 2012)
+Changes from v1.0:
+* Support for MCP49x2 series DACs added; thanks to Jonas Gruska for idea/code/testing
+* Library renamed from DAC_MCP49x1 to DAC_MCP49xx
 
 Supported models:
 * MCP4901 (8-bit, single)
@@ -35,19 +37,19 @@ void loop() {
 See the example sketches for slightly more detailed examples.
 
 A note on latching/LDAC:
-  The way these DACs work is as follows: when a value is sent to them via
-  the output*() methods, the output does not instantly change.
-  Instead, the DAC waits until the LDAC pin has been pulled low. Therefore,
-  if that pin is tied to ground, the output *will* instantly change.
-  However, if that pin is connected to the Arduino, you will need to latch
-  the output in order for a change to happen. There are two ways to do this:
-  1) Call latch(), which creates a low pulse
-  2) MCP49x2 only: call output2(), with the automaticallyLatchDual option set
-     (true by default), which will then call latch() for you
+	The way these DACs work is as follows: when a value is sent to them via
+	the output*() methods, the output does not instantly change.
+	Instead, the DAC waits until the LDAC pin has been pulled low. Therefore,
+	if that pin is tied to ground, the output *will* instantly change.
+	However, if that pin is connected to the Arduino, you will need to latch
+	the output in order for a change to happen. There are two ways to do this:
+	1) Call latch(), which creates a low pulse
+	2) MCP49x2 only: call output2(), with the automaticallyLatchDual option set
+	   (true by default), which will then call latch() for you
 
-  The main usage of this functionality is to synchronize multiple DACs (2 or more),
-  to make their outputs change at the same moment, despite having the data sent
-  to them one at a time.
+	The main usage of this functionality is to synchronize multiple DACs (2 or more),
+	to make their outputs change at the same moment, despite having the data sent
+	to them one at a time.
 
 Simple function overview:
 
@@ -98,6 +100,7 @@ outputB(unsigned short)
 	Sends the value to DAC B. Otherwise same as output().
 
 output2(unsigned short, unsigned short)
+	MCP49x2 (dual DAC) only.
 	Sends the two output values to the two outputs of the dual DACs.
 	Latches the output automatically unless setAutomaticallyLatchDual() has been
 	called with 'false' as the argument.
