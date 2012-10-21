@@ -69,6 +69,11 @@ float last_reading[NUM_SENSORS];
 
 OneWire ds(ONEWIRE_PIN);
 
+// Used to give each data packet (and response packet) a unique ID.
+// Won't wrap: 2^32 times 10 seconds per packet = ~1361 years!
+// ... and that would also require 100% consecutive uptime!
+uint32_t seq = 0;
+
 // Set up the Ethernet connection
 // 00:08:DC = WIZnet; the rest is randomized
 byte mac[] = { 0x00, 0x08, 0xDC, 0x14, 0xCE, 0x08 };
@@ -89,7 +94,26 @@ void setNetLED(boolean on) {
 }
 
 void panic(const char *str) {
-  // TODO: tell the server, if possible
+  // Attempt to tell the server, which then sends an email
+  const int BUFSIZE = 96;
+  char buf[BUFSIZE] = {0};
+  sprintf(buf, "PANIC SEQ %lu MSG %s", seq, str);
+  Serial.print("Sending panic message: ");
+  Serial.println(buf);
+
+  udp.flush();
+  udp.begin(localport);
+  udpSendPacket(buf);
+
+  memset(buf, 0, BUFSIZE);
+  int ret = udpRecvPacket(buf, 128, 2000);
+  if (ret <= 0 || (buf[0] != 'O' && buf[1] != 'K')) {
+    Serial.println("Unable to send panic message!");
+  }
+
+  udp.flush();
+  udp.stop();
+
   for(;;) {
     Serial.print("PANIC: ");
     Serial.println(str);
@@ -334,11 +358,6 @@ int udpRecvPacket(char *buf, uint16_t maxsize, uint16_t timeout) {
   return udp.read(buf, maxsize);
 }
 
-// Used to give each data packet (and response packet) a unique ID.
-// Won't wrap: 2^32 times 10 seconds per packet = ~1361 years!
-// ... and that would also require 100% consecutive uptime!
-uint32_t seq = 0;
-
 void loop() {
   while (time_to_work == false) { 
     // Flag is cleared by ISR
@@ -361,11 +380,10 @@ void loop() {
   // Workaround: convert to signed integer, transmit,
   // convert back on receiving end
   char buf[34] = {0};
-  sprintf(buf, "%ld:%ld SEQ %lu%c",
+  sprintf(buf, "%ld:%ld SEQ %lu",
     (int32_t)(sensor_0 * 10000),
     (int32_t)(sensor_1 * 10000),
-    seq,
-    0);
+    seq);
 
   udp.begin(localport);
   udpSendPacket(buf);
