@@ -14,6 +14,14 @@
  * Thomas Backman, 2012
  * serenity@exscape.org
  */
+ 
+ ///
+ /// TODO: Improve stability; use warn() instead of panic(), so that operation can resume
+ /// for transient events!
+ /// TODO: send warning emails (via the serverside software)
+ /// on panic(), instead of just silently blinking LEDs and printing
+ /// to the serial console!
+ ///
 
 #include <SPI.h>
 #include <Ethernet.h>
@@ -22,6 +30,14 @@
 // Pin definitions
 #define WIZRST 8
 #define ONEWIRE_PIN 9
+#define NET_LED A0
+#define STATUS_LED A1
+
+// If the reading differs by more degrees than this,
+// re-read it to make sure it's not a one-off error.
+// Set to a low value since there's little harm in re-reading,
+// and rapid changes are unexpected here.
+#define MAX_DELTA 4
 
 // The current UNIX timestamp. Updated from the server now and then,
 // and updated by the 1 Hz timer
@@ -40,33 +56,51 @@ typedef struct {
 #define NUM_SENSORS 2
 device_list_t devices[NUM_SENSORS] = 
 {
-//  { { 0x10, 0x3e, 0x3a, 0x2f, 0x02, 0x08, 0x00, 0xef }, false }, // Sensor 0
-//  { { 0x10, 0x05, 0x5d, 0x2f, 0x02, 0x08, 0x00, 0xba }, false }  // Sensor 1
-    { { 0x10, 0x66, 0x5d, 0x8d, 0x02, 0x08, 0x00, 0x8e }, false }, // Sensor 0, second finished cable
-    { { 0x10, 0x88, 0xbd, 0x8d, 0x02, 0x08, 0x00, 0x6e }, false } // Sensor 1, first finished cable
+//  { { 0x10, 0x3e, 0x3a, 0x2f, 0x02, 0x08, 0x00, 0xef }, false }, // Old sensor 0
+//  { { 0x10, 0x05, 0x5d, 0x2f, 0x02, 0x08, 0x00, 0xba }, false }  // Old sensor 1
+    { { 0x10, 0x66, 0x5d, 0x8d, 0x02, 0x08, 0x00, 0x8e }, false }, // Sensor 0
+    { { 0x10, 0x88, 0xbd, 0x8d, 0x02, 0x08, 0x00, 0x6e }, false } // Sensor 1
 };
 
 // Store the last reading, to remove outliers.
 // The sensors sometimes return 85 C (their default value). Since this *may* be valid
-// (though that is insanely unlikely for *this* project), we compare it to the previous reading.
+// (though that is insanely unliksetupely for *this* project), we compare it to the previous reading.
 float last_reading[NUM_SENSORS];
 
 OneWire ds(ONEWIRE_PIN);
 
 // Set up the Ethernet connection
-byte mac[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 };
+// 00:08:DC = WIZnet; the rest is randomized
+byte mac[] = { 0x00, 0x08, 0xDC, 0x14, 0xCE, 0x08 };
 IPAddress ip(192, 168, 2, 177);
-IPAddress serverip(192, 168, 2, 60); // TODO: make this server IP static!
+IPAddress serverip(192, 168, 2, 60); // TODO: make this IP static on the server side!
 const uint16_t serverport = 40100;
 const uint16_t localport = 40100; // why not?
 EthernetUDP udp;
 
+void setStatusLED(boolean on) {
+  pinMode(STATUS_LED, OUTPUT);
+  digitalWrite(STATUS_LED, on ? LOW : HIGH);
+}
+
+void setNetLED(boolean on) {
+  pinMode(NET_LED, OUTPUT);
+  digitalWrite(NET_LED, on ? LOW : HIGH);
+}
+
 void panic(const char *str) {
+  // TODO: tell the server, if possible
   for(;;) {
     Serial.print("PANIC: ");
     Serial.println(str);
-    delay(2000);
-    // TODO: blink status LEDs, when on the final PCB
+
+    setStatusLED(true);
+    setNetLED(true);
+    delay(500);
+
+    setStatusLED(false);
+    setNetLED(false);
+    delay(500);
   }
 }
 
@@ -115,7 +149,7 @@ void findTemperatureSensors(void) {
 
     for (int i=0; i < NUM_SENSORS; i++) {
       if (memcmp(devices[i].addr, addr, 8) == 0) {
-        // Found one of the sensors
+        // Found one ofsetup the sensors
         devices[i].found = true;
       }
     }
@@ -201,7 +235,7 @@ float readTemperature(int dev) {
 
   // Remove extreme outliers. Since we sample very often, big changes between two readings
   // are very unlikely.
-  if ((data[0] == 0xAA || fabs(last_reading[dev] - temp) >= 10) && have_retried_reading == false) {
+  if ((data[0] == 0xAA || fabs(last_reading[dev] - temp) >= MAX_DELTA) && have_retried_reading == false) {
     // 0xAA (85 C) is the sensor's default value (before taking readings), and is suspect,
     // since it's higher than we'd expect for this sensor. Retry if that value is read.
     // Also retry if the difference between the last reading and this reading is too big.
@@ -221,9 +255,20 @@ float readTemperature(int dev) {
 }
 
 void setup() {
+  pinMode(WIZRST, OUTPUT);
+  setStatusLED(false);
+  setNetLED(false);
   resetWiznet();
   delay(1000);
   
+  // Enable internal pullups for all unused pins
+  // 3 through A5 (i.e. the right-hand side) are the addon pins
+  unsigned char unused_pins[] = {4, 5, 6, 7, 3, A2, A3, A4, A5};
+  for (int i=0; i < sizeof(unused_pins); i++) {
+    pinMode(i, INPUT);
+    digitalWrite(i, HIGH);
+  }
+
   Serial.begin(115200);
   
   findTemperatureSensors();
@@ -329,6 +374,7 @@ void loop() {
   int ret = 0;
   ret = udpRecvPacket(buf, 33, 2000);
   if (ret <= 0) {
+    digitalWrite(NET_LED, HIGH); // Off
     Serial.println("Failed to receive data: timeout/error");
 
     // TODO: "cache" data if current_time is set properly (> 1348512615 for example.
@@ -337,6 +383,8 @@ void loop() {
     goto loop_end;
   }
   /* else success */
+
+  digitalWrite(NET_LED, LOW); // On
 
   Serial.print("Response: [");
   Serial.print(buf);
