@@ -93,6 +93,12 @@ void setNetLED(boolean on) {
   digitalWrite(NET_LED, on ? LOW : HIGH);
 }
 
+void blinkStatusOnce(unsigned short ms_lit) {
+  setStatusLED(true);
+  delay(ms_lit);
+  setStatusLED(false);
+}
+
 void panic(const char *str) {
   // Attempt to tell the server, which then sends an email
   const int BUFSIZE = 96;
@@ -223,6 +229,17 @@ float readTemperature(int dev) {
   }
   crc = ds.read();
   
+  // Check for all ones (eight 0xff bytes)
+  char count = 0;
+  for (int i=0; i < 8; i++) {
+    if (data[i] == 0xff)
+      count++;
+    else break;
+  }
+  if (count == 8) {
+    panic("All ones received - a sensor is most likely disconnected!");
+  }
+
   if (OneWire::crc8(data, 8) != crc) {
     crc_tries++;
     if (crc_tries > 5) {
@@ -279,6 +296,7 @@ float readTemperature(int dev) {
 }
 
 void setup() {
+  setStatusLED(true);
   pinMode(WIZRST, OUTPUT);
   setStatusLED(false);
   setNetLED(false);
@@ -392,7 +410,7 @@ void loop() {
   int ret = 0;
   ret = udpRecvPacket(buf, 33, 2000);
   if (ret <= 0) {
-    digitalWrite(NET_LED, HIGH); // Off
+    setNetLED(false);
     Serial.println("Failed to receive data: timeout/error");
 
     // TODO: "cache" data if current_time is set properly (> 1348512615 for example.
@@ -402,7 +420,7 @@ void loop() {
   }
   /* else success */
 
-  digitalWrite(NET_LED, LOW); // On
+  setNetLED(true);
 
   Serial.print("Response: [");
   Serial.print(buf);
@@ -422,6 +440,9 @@ void loop() {
   if (strcmp(stat, "OK") != 0) {
     Serial.println("Invalid response! Status is not OK");
     // TODO: handle error. For now, ignore it
+  }
+  else {
+    blinkStatusOnce(150);
   }
 
   if (recv_seq != seq) {
