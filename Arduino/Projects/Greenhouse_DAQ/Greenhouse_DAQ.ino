@@ -100,6 +100,12 @@ void blinkStatusOnce(unsigned short ms_lit) {
   setStatusLED(false);
 }
 
+void blinkNetOnce(unsigned short ms_lit) {
+  setNetLED(true);
+  delay(ms_lit);
+  setNetLED(false);
+}
+
 void sendPing(void) {
   // Sends a "PING" UDP packet and hopes to receive a "PONG". Simple connectivity test,
   // nothing more.
@@ -440,6 +446,7 @@ void loop() {
   if (ret <= 0) {
     setNetLED(false);
     Serial.println("Failed to receive data: timeout/error");
+    blinkNetOnce(150);
 
     // TODO: "cache" data if current_time is set properly (> 1348512615 for example.
     // since it starts out at 0, any big number means it'll have synced the time prior
