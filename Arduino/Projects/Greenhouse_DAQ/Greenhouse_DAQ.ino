@@ -13,14 +13,12 @@
  *
  * Thomas Backman, 2012
  * serenity@exscape.org
+ * http://blog.exscape.org
  */
  
  ///
  /// TODO: Improve stability; use warn() instead of panic(), so that operation can resume
  /// for transient events!
- /// TODO: send warning emails (via the serverside software)
- /// on panic(), instead of just silently blinking LEDs and printing
- /// to the serial console!
  ///
 
 #include <SPI.h>
