@@ -68,6 +68,7 @@ device_list_t devices[NUM_SENSORS] =
 float last_reading[NUM_SENSORS];
 
 OneWire ds(ONEWIRE_PIN);
+volatile boolean done_starting_up = false;
 
 // Used to give each data packet (and response packet) a unique ID.
 // Won't wrap: 2^32 times 10 seconds per packet = ~1361 years!
@@ -99,6 +100,26 @@ void blinkStatusOnce(unsigned short ms_lit) {
   setStatusLED(false);
 }
 
+void sendPing(void) {
+  // Sends a "PING" UDP packet and hopes to receive a "PONG". Simple connectivity test,
+  // nothing more.
+  udp.begin(localport);
+  udpSendPacket("PING");
+  char buf[4] = {0};
+  int ret = udpRecvPacket(buf, 4, 2000);
+  udp.flush();
+  udp.stop();
+
+  if (ret > 0 && strncmp(buf, "PONG", 4) == 0) {
+    setNetLED(true);
+    Serial.println("PONG received!");
+  }
+  else {
+    setNetLED(false);
+    Serial.println("WARNING: PONG not received!");
+  }
+}
+
 void panic(const char *str) {
   // Attempt to tell the server, which then sends an email
   const int BUFSIZE = 96;
@@ -112,7 +133,7 @@ void panic(const char *str) {
   udpSendPacket(buf);
 
   memset(buf, 0, BUFSIZE);
-  int ret = udpRecvPacket(buf, 128, 2000);
+  int ret = udpRecvPacket(buf, BUFSIZE, 2000);
   if (ret <= 0 || (buf[0] != 'O' && buf[1] != 'K')) {
     Serial.println("Unable to send panic message!");
   }
@@ -312,10 +333,11 @@ void setup() {
   }
 
   Serial.begin(115200);
+
+  Ethernet.begin(mac, ip, dns);
+  sendPing();
   
   findTemperatureSensors();
-  
-  Ethernet.begin(mac, ip, dns);
 
   // Set up Timer1 for 1 Hz operation
   cli();
@@ -329,11 +351,17 @@ void setup() {
 }
 
 volatile boolean time_to_work = false;
-
 // ISR is called every second; exactly once every 10 seconds
 // isn't possible (at 16 MHz clock) without custom code:
 ISR(TIMER1_COMPA_vect) {
-static byte count = 0;
+  // Blink the status LED until we're up and running
+  static boolean prev_led = false;
+  if (!done_starting_up) {
+    setStatusLED(!prev_led);
+    prev_led = !prev_led;
+  }
+
+  static byte count = 0;
   count++;
   current_time++;
   if (count >= 10) {
@@ -443,6 +471,7 @@ void loop() {
   }
   else {
     blinkStatusOnce(150);
+    done_starting_up = true;
   }
 
   if (recv_seq != seq) {
