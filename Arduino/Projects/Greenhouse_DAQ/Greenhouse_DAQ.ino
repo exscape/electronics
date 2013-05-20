@@ -2,10 +2,10 @@
  * Temperature sampler for a greenhouse temperature monitor
  * Samples the temperature from 2 sensors, and sends it via Ethernet to a
  * Python server. The Python server saves it to an RRD database,
- * which is accessed by a PHP/jQuery website to produce graphs according to 
+ * which is accessed by a PHP/jQuery website to produce graphs according to
  * user input.
  *
- * Hardware: 
+ * Hardware:
  * * Custom PCB (also tested w/ Arduino Uno R3 + breadboard)
  * * Atmel Atmega328P-PU (DIP)
  * * WIZnet WIZ820io SPI Ethernet module
@@ -52,7 +52,7 @@ typedef struct {
 // that the sensors won't "change place" as with a dynamic detection.
 // "Sensor 1" must always remain the same sensor, etc.
 #define NUM_SENSORS 2
-device_list_t devices[NUM_SENSORS] = 
+device_list_t devices[NUM_SENSORS] =
 {
   //  { { 0x10, 0x3e, 0x3a, 0x2f, 0x02, 0x08, 0x00, 0xef }, false }, // Old sensor 0
   //  { { 0x10, 0x05, 0x5d, 0x2f, 0x02, 0x08, 0x00, 0xba }, false }  // Old sensor 1
@@ -67,7 +67,6 @@ float last_reading[NUM_SENSORS];
 uint32_t missed_answers = 0; // number of answers without a response, in a row
 
 OneWire ds(ONEWIRE_PIN);
-volatile boolean done_starting_up = false;
 
 // Used to give each data packet (and response packet) a unique ID.
 // Won't wrap: 2^32 times 10 seconds per packet = ~1361 years!
@@ -223,7 +222,7 @@ restart:
       char *s = "Could not find sensor with address ";
       strcpy(buf, s);
       addr_to_str(devices[i].addr, buf + strlen(s));
-      panic(buf);      
+      panic(buf);
     }
   }
 }
@@ -296,7 +295,7 @@ restart_temp:
   }
   else {
     // Temperature is positive; use the full-resolution (1/16 C) formula,
-    // mostly to get "less digital-looking" graphs, even though the added 
+    // mostly to get "less digital-looking" graphs, even though the added
     // resolution doesn't mean added *accuracy*.
     temp = (LSB >> 1) - 0.25 + (count_per_c - count_remain)/((float)count_per_c);
 
@@ -326,10 +325,12 @@ restart_temp:
   return temp;
 }
 
+bool dhcpInProgress = false;
+bool serverContacted = false;
+
 void setup() {
   Serial.begin(9600);
   Serial.println("Ethernet DAQ starting up!\nInitializing Wiznet...");
-  setStatusLED(true);
   pinMode(WIZRST, OUTPUT);
   setStatusLED(false);
   setNetLED(false);
@@ -344,17 +345,7 @@ void setup() {
     digitalWrite(i, HIGH);
   }
 
-  Serial.println("Retrieving IP address...");
-  while (Ethernet.begin(mac) != 1) {
-    Serial.println("DHCP failed, retrying...");
-  }
-  Serial.print("Got an IP address: ");
-  serialPrintIP(Ethernet.localIP());
-
-  findTemperatureSensors();
-
-  //serverip = IPAddress(192,168,99,250);
-  updateServerIP(); // Broadcasts a PING message, to which the server replies
+  dhcpInProgress = true; // Start blinking the net LED, in the timer
 
   // Set up Timer1 for 1 Hz operation
   cli();
@@ -365,17 +356,45 @@ void setup() {
   TCCR1B |= (1 << CS10) | (1 << CS12); // 1024 prescaler
   TIMSK1 |= (1 << OCIE1A);
   sei();
+
+  Serial.println("Retrieving IP address...");
+  while (Ethernet.begin(mac) != 1) {
+    Serial.println("DHCP failed, retrying...");
+  }
+
+  dhcpInProgress = false; // Stop blinking net
+  setNetLED(true);
+
+  Serial.print("Got an IP address: ");
+  serialPrintIP(Ethernet.localIP());
+
+  findTemperatureSensors();
+
+  //serverip = IPAddress(192,168,99,250);
+  updateServerIP(); // Broadcasts a PING message, to which the server replies
 }
 
 volatile boolean time_to_work = false;
 // ISR is called every second; exactly once every 10 seconds
 // isn't possible (at 16 MHz clock) without custom code:
 ISR(TIMER1_COMPA_vect) {
-  // Blink the status LED until we're up and running
-  static boolean prev_led = false;
-  if (!done_starting_up) {
-    setStatusLED(!prev_led);
-    prev_led = !prev_led;
+
+  // Blink LEDs while starting up.
+  // Both LEDs are off to begin with.
+  // Net blinks until DHCP is finished, after which it is constantly lit.
+  // Status then blinks until contact with the server has been acquired,
+  // after which it is is off, but blinks quickly once each time a reading is sent.
+  static bool lastnet = false, laststatus = false;
+  if (dhcpInProgress) {
+     // Blink the Net LED until DHCP is finished
+     setNetLED(!lastnet);
+     lastnet = !lastnet;
+  }
+  else if (!serverContacted) {
+    // Blink the status LED until the server has been contacted, after
+    // DHCP has finished
+    setStatusLED(!laststatus);
+    laststatus = !laststatus;
   }
 
   static byte count = 0;
@@ -457,6 +476,7 @@ void updateServerIP(void) {
         Serial.print("Answer received. Server IP is: ");
         serialPrintIP(rem);
         serverip = rem;
+        serverContacted = true;
 
         return;
       }
@@ -548,7 +568,7 @@ void loop() {
   }
   else {
     blinkStatusOnce(150);
-    done_starting_up = true;
+    serverContacted = true;
   }
 
   if (recv_seq != seq) {
