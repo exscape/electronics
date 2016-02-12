@@ -63,11 +63,22 @@ DAC_MCP49xx::DAC_MCP49xx(DAC_MCP49xx::Model _model, int _ss_pin, int _LDAC_pin) 
   digitalWrite(ss_pin, HIGH); // Unselect the device
   digitalWrite(LDAC_pin, HIGH); // Un-latch the output
 
-  SPI.begin();  
+  SPI.begin();
   SPI.setBitOrder(MSBFIRST);
   SPI.setDataMode(SPI_MODE0);
   SPI.setClockDivider(spi_divider);
 }
+
+void DAC_MCP49xx::setBuffer(boolean _buffer)
+{
+    this->bufferVref = _buffer;
+}
+
+void DAC_MCP49xx::setPortWrite(boolean _port_write)
+{
+    this->port_write = _port_write; 
+}
+
 
 // Only relevant for the MCP49x2 dual DACs.
 // If set, calling output2() will pull the LDAC pin low automatically,
@@ -77,6 +88,7 @@ DAC_MCP49xx::DAC_MCP49xx(DAC_MCP49xx::Model _model, int _ss_pin, int _LDAC_pin) 
 // If sync is desired, wire the LDAC pin to the Arduino and set this to true.
 boolean DAC_MCP49xx::setAutomaticallyLatchDual(bool _latch) {
   automaticallyLatchDual = _latch;
+  return _latch;
 }
 
 // Sets the gain. These DACs support 1x and 2x gain.

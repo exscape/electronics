@@ -31,8 +31,8 @@ class DAC_MCP49xx {
   };
     
   DAC_MCP49xx(Model _model, int _ss_pin, int _ldac_pin = -1);
-  void setBuffer(boolean _buffer) { this->bufferVref = _buffer; }
-  void setPortWrite(boolean _port_write) { this->port_write = _port_write; }
+  void setBuffer(boolean _buffer);
+  void setPortWrite(boolean _port_write);
   boolean setGain(int _gain);
   boolean setSPIDivider(int _spi_divider);
   void shutdown(void);
@@ -54,8 +54,8 @@ class DAC_MCP49xx {
     boolean bufferVref;
     boolean gain2x; /* false -> 1x, true -> 2x */
     boolean port_write; /* use optimized port writes? won't work everywhere! */
-    boolean automaticallyLatchDual; /* call latch() automatically after output2() has been called? */
     int spi_divider;
+    boolean automaticallyLatchDual; /* call latch() automatically after output2() has been called? */
 };
 
 #endif
